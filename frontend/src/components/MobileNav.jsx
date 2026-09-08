@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Home, Users, CreditCard, Calendar, Menu } from 'lucide-react';
 
 const mobileNavItems = [
@@ -15,16 +16,16 @@ const MobileNav = () => {
       {mobileNavItems.map((item) => {
         const Icon = item.icon;
         return (
-          <a
+          <Link
             key={item.name}
-            href="#"
+            to="/"
             className={`flex flex-col items-center gap-1 ${
               item.active ? 'text-primary' : 'text-text-secondary'
             }`}
           >
             <Icon className="w-6 h-6" />
             <span className="text-[10px] font-medium">{item.name}</span>
-          </a>
+          </Link>
         );
       })}
     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Home, Users, CreditCard, Calendar, Bell, BarChart2, Settings, Dumbbell } from 'lucide-react';
 
 const navItems = [
@@ -15,9 +16,9 @@ const Sidebar = () => {
   return (
     <aside className="hidden md:flex flex-col w-64 h-screen bg-bg border-r border-border p-6 fixed top-0 left-0 z-10">
       {/* Logo */}
-      <div className="mb-12">
+      <Link to="/" className="mb-12 block">
         <img src="/home/app-name.png" alt="Fitness Factory" className="h-12 w-auto object-contain" />
-      </div>
+      </Link>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
