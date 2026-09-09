@@ -100,7 +100,7 @@ const MemberPayments = () => {
         
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm mb-6">
-          <Link to="/" className="text-text-secondary hover:text-text-primary transition-colors">Clients</Link>
+          <Link to="/clients" className="text-text-secondary hover:text-text-primary transition-colors">Clients</Link>
           <ChevronRight className="w-4 h-4 text-text-secondary" />
           <Link to={`/member/${id}`} className="text-text-secondary hover:text-text-primary transition-colors">{member.name}</Link>
           <ChevronRight className="w-4 h-4 text-text-secondary" />

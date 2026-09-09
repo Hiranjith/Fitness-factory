@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import StatCard from '../components/StatCard';
 import { UpcomingPaymentsTable, RecentPaymentsTable } from '../components/PaymentsTable';
 import Banner from '../components/Banner';
+import AddMemberModal from '../components/AddMemberModal';
 import { Users, UserCheck, Clock, AlertCircle } from 'lucide-react';
 
 // Mock Data
@@ -22,6 +23,8 @@ const recentPaymentsData = [
 ];
 
 const Dashboard = () => {
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+
   return (
     <>
       {/* Header section - Date only */}
@@ -72,12 +75,20 @@ const Dashboard = () => {
         <Banner />
       </div>
 
-      {/* Mobile Add Client Button */}
+        {/* Mobile Register New Member Button */}
       <div className="md:hidden mt-6 mb-4">
-        <button className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors">
-          <span className="text-xl leading-none mb-0.5">+</span> Add Client
+        <button 
+          onClick={() => setIsAddMemberModalOpen(true)}
+          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
+        >
+          <span className="text-xl leading-none mb-0.5">+</span> Register New Member
         </button>
       </div>
+
+      <AddMemberModal 
+        isOpen={isAddMemberModalOpen} 
+        onClose={() => setIsAddMemberModalOpen(false)} 
+      />
     </>
   );
 };

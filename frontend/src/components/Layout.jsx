@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import TopBar from './TopBar';
+import AddMemberModal from './AddMemberModal';
 
 const Layout = ({ children }) => {
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+
   return (
     <div className="flex min-h-screen bg-bg text-text-primary font-sans">
       <Sidebar />
@@ -13,7 +16,12 @@ const Layout = ({ children }) => {
           {children}
         </main>
       </div>
-      <MobileNav />
+      <MobileNav onOpenAddMember={() => setIsAddMemberModalOpen(true)} />
+      
+      <AddMemberModal 
+        isOpen={isAddMemberModalOpen} 
+        onClose={() => setIsAddMemberModalOpen(false)} 
+      />
     </div>
   );
 };

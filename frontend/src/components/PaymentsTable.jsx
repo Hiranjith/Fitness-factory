@@ -54,8 +54,8 @@ export const UpcomingPaymentsTable = ({ data }) => {
       </div>
       
       <div className="flex flex-col gap-3">
-        {data.map((row) => (
-          <Link to={`/member/${row.id}`} key={row.id} className="block">
+        {data.map((row, idx) => (
+          <Link to={`/member/${row.id}`} key={row.id} className={`block ${idx >= 3 ? 'hidden md:block' : ''}`}>
             <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border hover:border-text-secondary/30 transition-colors cursor-pointer">
               <div className="flex items-center gap-4 md:gap-5">
                 <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-border bg-bg flex items-center justify-center text-sm font-medium text-text-primary flex-shrink-0">
@@ -83,9 +83,11 @@ export const UpcomingPaymentsTable = ({ data }) => {
           </Link>
         ))}
       </div>
-      <button className="self-start text-primary hover:text-primary/80 text-sm font-bold mt-3 transition-colors">
-        View All
-      </button>
+      <Link to="/upcoming-payments" className="self-start mt-3">
+        <button className="text-primary hover:text-primary/80 text-sm font-bold transition-colors">
+          View All
+        </button>
+      </Link>
     </div>
   );
 };
@@ -109,7 +111,7 @@ export const RecentPaymentsTable = ({ data }) => {
         {data.map((row, idx) => {
           const initials = row.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
           return (
-            <Link to={`/member/${row.id}`} key={idx} className="block">
+            <Link to={`/member/${row.id}`} key={idx} className={`block ${idx >= 3 ? 'hidden md:block' : ''}`}>
               <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border hover:border-text-secondary/30 transition-colors cursor-pointer">
                 <div className="flex items-center gap-4 md:gap-5">
                   <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-primary/30 bg-primary/10 flex items-center justify-center font-bold text-text-primary flex-shrink-0 text-lg">
@@ -137,9 +139,11 @@ export const RecentPaymentsTable = ({ data }) => {
           );
         })}
       </div>
-      <button className="self-start text-primary hover:text-primary/80 text-sm font-bold mt-3 transition-colors">
-        View All
-      </button>
+      <Link to="/recent-payments" className="self-start mt-3">
+        <button className="text-primary hover:text-primary/80 text-sm font-bold transition-colors">
+          View All
+        </button>
+      </Link>
     </div>
   );
 };

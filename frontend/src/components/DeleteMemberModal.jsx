@@ -29,7 +29,7 @@ const DeleteMemberModal = ({ isOpen, onClose, member }) => {
         
         <p className="text-[13px] text-[#98989f] text-center mb-8 leading-snug">
           This action will remove the member<br/>
-          from your active client list.
+          from your active member list.
         </p>
 
         {/* Buttons */}

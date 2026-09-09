@@ -1,25 +1,56 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Bell, ChevronDown, Dumbbell, ChevronLeft, MoreVertical } from 'lucide-react';
 
 const TopBar = () => {
+  const navigate = useNavigate();
   const location = useLocation();
   const isMemberDetails = location.pathname.startsWith('/member/');
   const isPaymentsView = location.pathname.endsWith('/payments');
-  const backUrl = isPaymentsView ? location.pathname.replace('/payments', '') : '/';
+  const isUpcomingPayments = location.pathname === '/upcoming-payments';
+  const isRecentPayments = location.pathname === '/recent-payments';
+  
+  const isMembers = location.pathname === '/members';
+  
+  const showMobileBack = isMemberDetails || isUpcomingPayments || isRecentPayments || isMembers;
+
+  const handleBack = (e) => {
+    e.preventDefault();
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      // Fallback if accessed directly
+      if (isMemberDetails && isPaymentsView) navigate(location.pathname.replace('/payments', ''));
+      else if (isMemberDetails) navigate('/members');
+      else navigate('/');
+    }
+  };
+
 
   return (
     <header className="flex items-center justify-between py-4 px-4 md:py-6 md:px-8 bg-bg md:bg-transparent sticky top-0 z-40">
       
       {/* Mobile Top Bar */}
-      {isMemberDetails ? (
+      {showMobileBack ? (
         <div className="md:hidden flex items-center justify-between w-full">
-          <Link to={backUrl} className="text-text-primary p-2 -ml-2">
+          <button onClick={handleBack} className="text-text-primary p-2 -ml-2">
             <ChevronLeft className="w-6 h-6" />
-          </Link>
+          </button>
           <img src="/home/app-name.png" alt="Fitness Factory" className="h-8 w-auto object-contain" />
-          {isPaymentsView ? (
+          {isPaymentsView || isUpcomingPayments || isRecentPayments ? (
             <div className="w-10"></div>
+          ) : isMembers ? (
+            <div className="relative">
+              <button 
+                className="text-text-primary p-2 -mr-2"
+                onClick={() => {
+                  const event = new CustomEvent('toggle-members-more-menu');
+                  window.dispatchEvent(event);
+                }}
+              >
+                <MoreVertical className="w-6 h-6" />
+              </button>
+            </div>
           ) : (
             <button className="text-text-primary p-2 -mr-2">
               <MoreVertical className="w-6 h-6" />
@@ -37,13 +68,13 @@ const TopBar = () => {
         <Search className="w-4 h-4 text-text-secondary mr-2" />
         <input 
           type="text" 
-          placeholder="Search clients..." 
+          placeholder="Search members..." 
           className="bg-transparent border-none outline-none text-text-primary text-sm w-full placeholder-text-secondary"
         />
       </div>
 
       {/* Right Actions */}
-      <div className={`flex items-center gap-6 ml-auto ${isMemberDetails ? 'hidden md:flex' : ''}`}>
+      <div className={`flex items-center gap-6 ml-auto ${showMobileBack ? 'hidden md:flex' : ''}`}>
         {/* Notification */}
         <button className="relative text-text-secondary hover:text-text-primary transition-colors">
           <Bell className="w-6 h-6" />
