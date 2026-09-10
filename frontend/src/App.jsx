@@ -8,6 +8,8 @@ import UpcomingPayments from './pages/UpcomingPayments';
 import RecentPayments from './pages/RecentPayments';
 import Members from './pages/Members';
 import Plans from './pages/Plans';
+import Reminders from './pages/Reminders';
+import Settings from './pages/Settings';
 import More from './pages/More';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -24,6 +26,8 @@ function App() {
           <Route path="/member/:id" element={<MemberDetails />} />
           <Route path="/member/:id/payments" element={<MemberPayments />} />
           <Route path="/plans" element={<Plans />} />
+          <Route path="/reminders" element={<Reminders />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/more" element={<More />} />
         </Routes>
       </Layout>
