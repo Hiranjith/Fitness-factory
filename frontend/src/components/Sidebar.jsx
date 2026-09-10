@@ -15,11 +15,7 @@ const navItems = [
 const Sidebar = () => {
   const location = useLocation();
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen bg-bg border-r border-border p-6 fixed top-0 left-0 z-10">
-      {/* Logo */}
-      <Link to="/" className="mb-12 block">
-        <img src="/home/app-name.png" alt="Fitness Factory" className="h-12 w-auto object-contain" />
-      </Link>
+    <aside className="hidden md:flex flex-col w-[240px] h-[calc(100vh-72px)] bg-bg border-r border-border p-6 fixed top-[72px] left-0 z-10">
 
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
@@ -42,13 +38,6 @@ const Sidebar = () => {
           );
         })}
       </nav>
-
-      {/* Bottom Text */}
-      <div className="mt-auto pt-8">
-        <p className="text-text-secondary font-bold text-sm tracking-widest leading-relaxed">
-          STRONG<br />PEOPLE<br />HAPPIER LIVES
-        </p>
-      </div>
     </aside>
   );
 };

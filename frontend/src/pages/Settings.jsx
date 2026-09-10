@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Bell, ChevronRight, Calendar, MessageSquare, Wifi, 
+  Bell, ChevronRight, ChevronDown, Calendar, MessageSquare, Wifi, 
   User, Users, Mail, Phone, Lock, LogOut, 
   Settings as SettingsIcon, Info 
 } from 'lucide-react';
-import TopBar from '../components/TopBar';
-import MobileNav from '../components/MobileNav';
+import ReminderMessageModal from '../components/ReminderMessageModal';
+import UpdateAdminModal from '../components/UpdateAdminModal';
+
 
 const WhatsAppIconFilled = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -15,10 +16,34 @@ const WhatsAppIconFilled = ({ className }) => (
 
 const Settings = () => {
   const [whatsappRemindersEnabled, setWhatsappRemindersEnabled] = useState(true);
+  const [editingMessageType, setEditingMessageType] = useState(null);
+  const [isTimingDropdownOpen, setIsTimingDropdownOpen] = useState(false);
+  const [isUpdateAdminModalOpen, setIsUpdateAdminModalOpen] = useState(false);
+  const [reminderTiming, setReminderTiming] = useState('3 days before');
+  const [reminderMessage, setReminderMessage] = useState(
+    "Hi {name},\n\nYour Fitness Factory membership is due tomorrow ({due_date}). Please make your membership payment to continue your fitness journey.\n\nThank you!\nFitness Factory 💪"
+  );
+  const [overdueMessage, setOverdueMessage] = useState(
+    "Hi {name},\n\nYour Fitness Factory membership was due on {due_date}. Please make your membership payment as soon as possible to continue using the gym.\n\nThank you!\nFitness Factory 💪"
+  );
+  const [adminDetails, setAdminDetails] = useState({
+    name: 'Admin',
+    email: 'admin@fitnessfactory.in',
+    phone: '+91 98765 43210'
+  });
+
+  useEffect(() => {
+    if (isTimingDropdownOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isTimingDropdownOpen]);
 
   return (
     <div className="flex flex-col h-full relative">
-      <TopBar title="Settings" />
+
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24 md:pb-6 scrollbar-hide max-w-4xl mx-auto w-full">
@@ -32,16 +57,6 @@ const Settings = () => {
           
           {/* Reminder Settings */}
           <div className="bg-[#18181b] border border-border rounded-2xl overflow-hidden">
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50">
-              <div className="flex items-center gap-4">
-                <Bell className="w-6 h-6 text-primary" strokeWidth={2.5} />
-                <div>
-                  <h3 className="text-white font-bold text-[15px]">Reminder Settings</h3>
-                  <p className="text-text-secondary text-xs mt-0.5">Configure WhatsApp reminders.</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-text-secondary" />
-            </div>
 
             <div className="p-4 flex items-center justify-between border-b border-border/50">
               <div className="flex items-center gap-4">
@@ -59,26 +74,69 @@ const Settings = () => {
               </button>
             </div>
 
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50">
+            <div className="p-4 flex items-center justify-between border-b border-border/50 relative">
               <div className="flex items-center gap-4">
                 <Calendar className="w-6 h-6 text-white" strokeWidth={1.5} />
                 <div>
                   <h4 className="text-white font-semibold text-sm">Reminder Timing</h4>
-                  <p className="text-text-secondary text-[11px] mt-0.5">Send reminder 1 day before payment due date</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white text-sm font-medium">1 day before</span>
-                <ChevronRight className="w-5 h-5 text-text-secondary" />
+              <div 
+                className="flex items-center gap-2 border border-primary px-3 py-1.5 rounded-lg bg-surface relative z-10 cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setIsTimingDropdownOpen(true)}
+              >
+                <span className="text-white text-sm font-medium">{reminderTiming}</span>
+                <ChevronDown className="w-4 h-4 text-primary" />
               </div>
+
+              {/* Dropdown Overlay and Menu */}
+              {isTimingDropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+                    onClick={() => setIsTimingDropdownOpen(false)}
+                  ></div>
+                  <div className="absolute right-4 top-16 z-50 w-48 bg-[#1e1e1e] border border-primary rounded-xl shadow-xl overflow-hidden">
+                    {['Same day', '1 day before', '3 days before'].map((option) => (
+                      <button 
+                        key={option}
+                        className="w-full text-left px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors border-b border-border/50 last:border-0"
+                        onClick={() => {
+                          setReminderTiming(option);
+                          setIsTimingDropdownOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50"
+              onClick={() => setEditingMessageType('reminder')}
+            >
               <div className="flex items-center gap-4">
                 <MessageSquare className="w-6 h-6 text-white" strokeWidth={1.5} />
                 <div>
                   <h4 className="text-white font-semibold text-sm">Reminder Message</h4>
                   <p className="text-text-secondary text-[11px] mt-0.5">Customize the message sent to members</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-text-secondary" />
+            </div>
+
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50"
+              onClick={() => setEditingMessageType('overdue')}
+            >
+              <div className="flex items-center gap-4">
+                <MessageSquare className="w-6 h-6 text-white" strokeWidth={1.5} />
+                <div>
+                  <h4 className="text-white font-semibold text-sm">Overdue Message</h4>
+                  <p className="text-text-secondary text-[11px] mt-0.5">Customize the message sent for overdue payments</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-text-secondary" />
@@ -113,7 +171,7 @@ const Settings = () => {
               <Users className="w-5 h-5 text-text-secondary mt-0.5" strokeWidth={2} />
               <div>
                 <h4 className="text-white font-semibold text-sm">Admin Name</h4>
-                <p className="text-text-secondary text-[13px] mt-0.5">Admin</p>
+                <p className="text-text-secondary text-[13px] mt-0.5">{adminDetails.name}</p>
               </div>
             </div>
 
@@ -121,7 +179,7 @@ const Settings = () => {
               <Mail className="w-5 h-5 text-text-secondary mt-0.5" strokeWidth={2} />
               <div>
                 <h4 className="text-white font-semibold text-sm">Email</h4>
-                <p className="text-text-secondary text-[13px] mt-0.5">admin@fitnessfactory.in</p>
+                <p className="text-text-secondary text-[13px] mt-0.5">{adminDetails.email}</p>
               </div>
             </div>
 
@@ -129,11 +187,14 @@ const Settings = () => {
               <Phone className="w-5 h-5 text-text-secondary mt-0.5" strokeWidth={2} />
               <div>
                 <h4 className="text-white font-semibold text-sm">Mobile Number</h4>
-                <p className="text-text-secondary text-[13px] mt-0.5">+91 98765 43210</p>
+                <p className="text-text-secondary text-[13px] mt-0.5">{adminDetails.phone}</p>
               </div>
             </div>
 
-            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50">
+            <div 
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors border-b border-border/50"
+              onClick={() => setIsUpdateAdminModalOpen(true)}
+            >
               <div className="flex items-center gap-4">
                 <Lock className="w-5 h-5 text-white" strokeWidth={2} />
                 <h4 className="text-white font-semibold text-sm">Change Login Details</h4>
@@ -142,9 +203,9 @@ const Settings = () => {
             </div>
 
             <div className="p-4">
-              <button className="w-full flex items-center justify-center gap-2 border border-error/50 hover:bg-error/10 text-error py-3.5 rounded-xl font-bold transition-colors">
-                <LogOut className="w-5 h-5" strokeWidth={2.5} />
-                Logout
+              <button className="w-full flex items-center justify-center gap-2 border border-[#f23838]/50 hover:bg-[#f23838]/10 text-[#f23838] py-3 rounded-2xl font-medium transition-colors bg-transparent">
+                <LogOut className="w-5 h-5" />
+                Log Out
               </button>
             </div>
           </div>
@@ -173,8 +234,25 @@ const Settings = () => {
 
         </div>
       </div>
-      
-      <MobileNav />
+
+      <ReminderMessageModal 
+        isOpen={editingMessageType !== null}
+        onClose={() => setEditingMessageType(null)}
+        initialMessage={editingMessageType === 'reminder' ? reminderMessage : (editingMessageType === 'overdue' ? overdueMessage : '')}
+        onSave={(newMessage) => {
+          if (editingMessageType === 'reminder') setReminderMessage(newMessage);
+          if (editingMessageType === 'overdue') setOverdueMessage(newMessage);
+        }}
+        title={editingMessageType === 'reminder' ? "Edit Reminder Message" : "Edit Overdue Message"}
+        description={editingMessageType === 'reminder' ? "Customize the message sent before the due date." : "Customize the message sent after the due date."}
+      />
+
+      <UpdateAdminModal 
+        isOpen={isUpdateAdminModalOpen}
+        onClose={() => setIsUpdateAdminModalOpen(false)}
+        initialData={adminDetails}
+        onSave={(newData) => setAdminDetails(newData)}
+      />
     </div>
   );
 };

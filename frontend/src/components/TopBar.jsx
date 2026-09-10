@@ -28,15 +28,25 @@ const TopBar = () => {
 
 
   return (
-    <header className="flex items-center justify-between py-4 px-4 md:py-6 md:px-8 bg-bg md:bg-transparent sticky top-0 z-40">
+    <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[72px] px-4 md:px-6 bg-[#111111] border-b border-[#262626] z-40">
       
+      {/* Center Logo (All screens) */}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center pointer-events-none z-0">
+        <Link to="/" className="pointer-events-auto flex items-center h-full">
+          <img src="/home/ff.png" alt="FF Logo" className="h-[52px] md:h-[60px] w-auto object-contain" />
+        </Link>
+      </div>
+
       {/* Mobile Top Bar */}
       {showMobileBack ? (
         <div className="md:hidden flex items-center justify-between w-full">
-          <button onClick={handleBack} className="text-text-primary p-2 -ml-2">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <img src="/home/app-name.png" alt="Fitness Factory" className="h-8 w-auto object-contain" />
+          <div className="flex items-center">
+            <button onClick={handleBack} className="text-text-primary p-2 -ml-2 relative z-10">
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <img src="/home/app-name.png" alt="Fitness Factory" className="h-[36px] w-auto object-contain ml-1" style={{ transform: 'scale(1.4)', transformOrigin: 'left center' }} />
+          </div>
+          
           {isPaymentsView || isUpcomingPayments || isRecentPayments ? (
             <div className="w-10"></div>
           ) : isMembers ? (
@@ -59,34 +69,31 @@ const TopBar = () => {
         </div>
       ) : (
         <Link to="/" className="md:hidden flex items-center">
-          <img src="/home/app-name.png" alt="Fitness Factory" className="h-12 w-auto object-contain" />
+          <img src="/home/app-name.png" alt="Fitness Factory" className="h-[36px] w-auto object-contain" style={{ transform: 'scale(1.4)', transformOrigin: 'left center' }} />
         </Link>
       )}
 
-      {/* Search - Hidden on small mobile, visible on tablet+ */}
-      <div className="hidden sm:flex items-center bg-surface rounded-full px-4 py-2 w-96 border border-border">
-        <Search className="w-4 h-4 text-text-secondary mr-2" />
-        <input 
-          type="text" 
-          placeholder="Search members..." 
-          className="bg-transparent border-none outline-none text-text-primary text-sm w-full placeholder-text-secondary"
-        />
-      </div>
+      {/* Desktop Logo */}
+      <Link to="/" className="hidden md:flex items-center h-[72px]">
+        <img src="/home/app-name.png" alt="Fitness Factory" className="h-[56px] w-auto object-contain" style={{ transform: 'scale(1.5)', transformOrigin: 'left center' }} />
+      </Link>
+
+
 
       {/* Right Actions */}
-      <div className={`flex items-center gap-6 ml-auto ${showMobileBack ? 'hidden md:flex' : ''}`}>
+      <div className={`flex items-center gap-5 ml-auto ${showMobileBack ? 'hidden md:flex' : ''}`}>
         {/* Notification */}
-        <button className="relative text-text-secondary hover:text-text-primary transition-colors">
-          <Bell className="w-6 h-6" />
-          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary rounded-full border-2 border-bg"></span>
+        <button className="relative w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center transition-colors">
+          <Bell className="w-[22px] h-[22px] text-text-secondary" />
+          <span className="absolute top-[8px] right-[9px] w-[7px] h-[7px] bg-primary rounded-full"></span>
         </button>
 
         {/* Profile */}
         <button className="hidden md:flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#B45309] text-white flex items-center justify-center font-semibold text-sm">
-            A
+            H
           </div>
-          <span className="font-medium text-sm">Admin</span>
+          <span className="font-medium text-sm">Hari</span>
           <ChevronDown className="w-4 h-4 text-text-secondary" />
         </button>
       </div>

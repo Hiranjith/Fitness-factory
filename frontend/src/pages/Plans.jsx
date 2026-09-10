@@ -308,39 +308,31 @@ const Plans = () => {
         {plansData.map((plan) => {
           const Icon = plan.icon;
           return (
-            <div key={plan.id} className="bg-surface rounded-xl p-4 border border-border flex items-center justify-between cursor-pointer" onClick={() => setSelectedPlan(plan)}>
-              {/* Left side: Icon and Name */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-white text-lg leading-tight">{plan.name}</span>
-                    <span className="text-xs text-text-secondary mt-0.5">{plan.duration}</span>
+            <div key={plan.id} className="bg-[#1c1c1e] border border-[#38383a] rounded-[20px] p-4 flex items-center justify-between cursor-pointer" onClick={() => setSelectedPlan(plan)}>
+              
+              {/* Left Side */}
+              <div className="flex items-center gap-3.5">
+                <div className="w-[46px] h-[46px] flex-shrink-0 rounded-full flex items-center justify-center bg-[#2A1700] border border-primary shadow-sm">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-white font-bold text-[16px] leading-tight">{plan.name}</span>
+                  <span className="text-[#98989f] text-[13px] mt-1">{plan.duration}</span>
+                  <div className="flex items-center gap-1 text-[#98989f] text-[13px] mt-0.5">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>{plan.members} Active</span>
                   </div>
                 </div>
               </div>
 
-              {/* Middle: Price */}
-              <div className="flex flex-col items-start min-w-[90px]">
-                <span className="font-bold text-primary text-lg leading-tight">{plan.price}</span>
-                <span className="text-[10px] text-text-secondary mt-0.5">{plan.priceSubtext}</span>
-              </div>
-
-              {/* Divider for desktop alignment conceptually, but mobile has a visual separator line? */}
-              <div className="hidden lg:block w-px h-10 bg-border"></div>
-
-              {/* Right side: Members */}
-              <div className="flex items-center border-l border-border/50 pl-4 ml-1 ml-auto">
-                <div className="flex flex-col items-center justify-center">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4 text-text-secondary" />
-                  </div>
-                  <span className="font-bold text-white text-sm mt-0.5">{plan.members}</span>
-                  <span className="text-[9px] text-text-secondary text-center leading-tight">Active members</span>
+              {/* Right Side */}
+              <div className="flex flex-col items-end text-right">
+                <div className="flex items-center text-primary font-bold text-[16px] leading-tight">
+                  {plan.price}
                 </div>
+                <span className="text-[#98989f] text-[12px] mt-1">{plan.priceSubtext}</span>
               </div>
+
             </div>
           );
         })}
