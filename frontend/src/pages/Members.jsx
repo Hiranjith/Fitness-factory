@@ -55,7 +55,7 @@ const Members = () => {
 
   // Prevent background scroll when modals are open
   useEffect(() => {
-    if (isExportModalOpen || isFilterModalOpen || isMobileMoreMenuOpen) {
+    if (isExportModalOpen || isFilterModalOpen || isMobileMoreMenuOpen || isAddMemberModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -63,7 +63,7 @@ const Members = () => {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isExportModalOpen, isFilterModalOpen, isMobileMoreMenuOpen]);
+  }, [isExportModalOpen, isFilterModalOpen, isMobileMoreMenuOpen, isAddMemberModalOpen]);
 
   return (
     <div className="flex flex-col h-full relative">
@@ -293,7 +293,7 @@ const Members = () => {
               >
                 <td className="py-4 px-6 text-text-secondary">{String(index + 1).padStart(3, '0')}</td>
                 <td className="py-4 px-4 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full border border-[#B45309] bg-[#B45309]/20 flex items-center justify-center font-bold text-white text-xs">
+                  <div className="w-8 h-8 rounded-full border-2 border-[#B45309] bg-[#1A0F00] shadow-sm flex items-center justify-center font-bold text-white text-xs">
                     {getInitials(member.name)}
                   </div>
                   <span className="font-medium text-text-primary">{member.name}</span>
@@ -374,7 +374,7 @@ const Members = () => {
         {membersData.map((member) => (
           <div key={member.id} className="bg-surface border border-border rounded-xl p-4 flex items-center justify-between relative">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full border border-[#B45309] bg-[#B45309]/20 flex items-center justify-center font-bold text-white text-xl tracking-wide">
+              <div className="w-12 h-12 rounded-full border-2 border-[#B45309] bg-[#1A0F00] shadow-sm flex items-center justify-center font-bold text-white text-xl tracking-wide">
                 {getInitials(member.name)}
               </div>
               <div className="flex flex-col">

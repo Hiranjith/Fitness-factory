@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Layers, Users, IndianRupee, TrendingUp, Search, Calendar, Dumbbell, MoreVertical, Lightbulb, ChevronRight, ChevronDown, Filter, Trash2, ArrowUpDown, Edit2, PauseCircle } from 'lucide-react';
 import StatCard from '../components/StatCard';
+import AddPlanModal from '../components/AddPlanModal';
+import PlanDetailsModal from '../components/PlanDetailsModal';
+import DeletePlanModal from '../components/DeletePlanModal';
+import DeactivatePlanModal from '../components/DeactivatePlanModal';
 
 const plansData = [
   { id: 1, name: 'Monthly', category: 'General Fitness', duration: '1 Month', price: '₹1,000', priceSubtext: 'per month', members: 42, status: 'Active', icon: Calendar },
@@ -13,6 +18,75 @@ const plansData = [
 const Plans = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [isAddPlanModalOpen, setIsAddPlanModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const planIdParam = searchParams.get('plan');
+  const selectedPlan = planIdParam ? plansData.find(p => p.id === Number(planIdParam)) : null;
+
+  const setSelectedPlan = (plan) => {
+    if (plan) {
+      searchParams.set('plan', plan.id);
+      setSearchParams(searchParams);
+    } else {
+      searchParams.delete('plan');
+      searchParams.delete('view');
+      setSearchParams(searchParams);
+    }
+  };
+
+  const [planToEdit, setPlanToEdit] = useState(null);
+  const [returnToPlanDetails, setReturnToPlanDetails] = useState(false);
+
+  useEffect(() => {
+    if (openDropdownId !== null || isMoreMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [openDropdownId, isMoreMenuOpen]);
+
+  const handleEditPlan = (plan, fromDetails = false) => {
+    if (fromDetails) {
+      setReturnToPlanDetails(true);
+      setSelectedPlan(null);
+    } else {
+      setReturnToPlanDetails(false);
+    }
+    setPlanToEdit(plan);
+    setIsAddPlanModalOpen(true);
+  };
+
+  const handleCloseAddPlan = () => {
+    setIsAddPlanModalOpen(false);
+    if (returnToPlanDetails && planToEdit) {
+      setSelectedPlan(planToEdit);
+    }
+    setPlanToEdit(null);
+    setReturnToPlanDetails(false);
+  };
+
+  const [isDeletePlanModalOpen, setIsDeletePlanModalOpen] = useState(false);
+  const [planToDelete, setPlanToDelete] = useState(null);
+
+  const handleDeletePlan = (plan, fromDetails = false) => {
+    if (fromDetails) {
+      setSelectedPlan(null); // Close details modal first
+    }
+    setPlanToDelete(plan);
+    setIsDeletePlanModalOpen(true);
+  };
+
+  const [isDeactivatePlanModalOpen, setIsDeactivatePlanModalOpen] = useState(false);
+  const [planToDeactivate, setPlanToDeactivate] = useState(null);
+
+  const handleDeactivatePlan = (plan, fromDetails = false) => {
+    if (fromDetails) {
+      setSelectedPlan(null); // Close details modal first
+    }
+    setPlanToDeactivate(plan);
+    setIsDeactivatePlanModalOpen(true);
+  };
 
   return (
     <div className="flex flex-col h-full relative">
@@ -23,7 +97,10 @@ const Plans = () => {
           <p className="text-text-secondary text-sm">Manage your membership plans</p>
         </div>
         <div className="flex items-center gap-3 relative">
-          <button className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center transition-colors">
+          <button 
+            className="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg flex items-center justify-center transition-colors"
+            onClick={() => setIsAddPlanModalOpen(true)}
+          >
             + Add Plan
           </button>
           <button 
@@ -36,8 +113,8 @@ const Plans = () => {
           {/* Desktop More Dropdown */}
           {isMoreMenuOpen && (
             <>
-              <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setIsMoreMenuOpen(false)}></div>
-              <div className="absolute top-12 right-0 z-50 w-48 bg-[#1e1e1e] border border-border rounded-xl shadow-xl overflow-hidden">
+              <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMoreMenuOpen(false)}></div>
+              <div className="absolute top-12 right-0 z-50 w-48 bg-[#1e1e1e] border border-primary rounded-xl shadow-xl overflow-hidden">
                 <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
                   <ArrowUpDown className="w-4 h-4" /> Sort Plans
                 </button>
@@ -60,7 +137,10 @@ const Plans = () => {
       <div className="md:hidden flex flex-col mb-4">
         <div className="flex justify-between items-center mb-1">
           <h1 className="text-2xl font-bold">Plans</h1>
-          <button className="bg-primary hover:bg-primary/90 text-white font-medium py-1.5 px-4 rounded-lg flex items-center gap-1 text-sm transition-colors">
+          <button 
+            className="bg-primary hover:bg-primary/90 text-white font-medium py-1.5 px-4 rounded-lg flex items-center gap-1 text-sm transition-colors"
+            onClick={() => setIsAddPlanModalOpen(true)}
+          >
             <span>+</span> Add Plan
           </button>
         </div>
@@ -153,7 +233,7 @@ const Plans = () => {
               {plansData.map((plan) => {
                 const Icon = plan.icon;
                 return (
-                  <tr key={plan.id} className="border-b border-border/50 hover:bg-white/5 transition-colors">
+                  <tr key={plan.id} className="border-b border-border/50 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setSelectedPlan(plan)}>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -181,7 +261,7 @@ const Plans = () => {
                       <div className="relative">
                         <button 
                           className="text-text-secondary hover:text-white transition-colors"
-                          onClick={() => setOpenDropdownId(openDropdownId === plan.id ? null : plan.id)}
+                          onClick={(e) => { e.stopPropagation(); setOpenDropdownId(openDropdownId === plan.id ? null : plan.id); }}
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
@@ -189,19 +269,25 @@ const Plans = () => {
                         {/* Desktop Row Dropdown */}
                         {openDropdownId === plan.id && (
                           <>
-                            <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setOpenDropdownId(null)}></div>
-                            <div className="absolute top-8 right-0 z-50 w-48 bg-[#18181b] border border-border rounded-xl shadow-2xl overflow-hidden py-2">
-                              <button className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
+                            <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setOpenDropdownId(null); }}></div>
+                            <div className="absolute top-8 right-0 z-50 w-48 bg-[#18181b] border border-primary rounded-xl shadow-2xl overflow-hidden py-2">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleEditPlan(plan); setOpenDropdownId(null); }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors text-sm text-text-primary"
+                              >
                                 <Edit2 className="w-4 h-4" /> Edit Plan
                               </button>
-                              <button className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
-                                <Users className="w-4 h-4" /> View Members
-                              </button>
-                              <button className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeactivatePlan(plan); setOpenDropdownId(null); }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-white/5 transition-colors text-sm text-text-primary"
+                              >
                                 <PauseCircle className="w-4 h-4" /> Deactivate Plan
                               </button>
                               <div className="h-px bg-border/50 my-1"></div>
-                              <button className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-error/10 transition-colors text-sm text-error">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan); setOpenDropdownId(null); }}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-error/10 transition-colors text-sm text-error"
+                              >
                                 <Trash2 className="w-4 h-4" /> Delete Plan
                               </button>
                             </div>
@@ -222,7 +308,7 @@ const Plans = () => {
         {plansData.map((plan) => {
           const Icon = plan.icon;
           return (
-            <div key={plan.id} className="bg-surface rounded-xl p-4 border border-border flex items-center justify-between">
+            <div key={plan.id} className="bg-surface rounded-xl p-4 border border-border flex items-center justify-between cursor-pointer" onClick={() => setSelectedPlan(plan)}>
               {/* Left side: Icon and Name */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-4">
@@ -245,8 +331,8 @@ const Plans = () => {
               {/* Divider for desktop alignment conceptually, but mobile has a visual separator line? */}
               <div className="hidden lg:block w-px h-10 bg-border"></div>
 
-              {/* Right side: Members and Actions */}
-              <div className="flex items-center gap-4 border-l border-border/50 pl-4 ml-1">
+              {/* Right side: Members */}
+              <div className="flex items-center border-l border-border/50 pl-4 ml-1 ml-auto">
                 <div className="flex flex-col items-center justify-center">
                   <div className="flex items-center gap-1">
                     <Users className="w-4 h-4 text-text-secondary" />
@@ -254,54 +340,40 @@ const Plans = () => {
                   <span className="font-bold text-white text-sm mt-0.5">{plan.members}</span>
                   <span className="text-[9px] text-text-secondary text-center leading-tight">Active members</span>
                 </div>
-                
-                <div className="flex items-center gap-1 text-text-secondary relative">
-                  <button 
-                    className="p-1 z-10 relative"
-                    onClick={() => setOpenDropdownId(openDropdownId === plan.id ? null : plan.id)}
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                  <ChevronRight className="w-5 h-5" />
-
-                  {/* Mobile Card Dropdown */}
-                  {openDropdownId === plan.id && (
-                    <>
-                      <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setOpenDropdownId(null)}></div>
-                      <div className="absolute top-10 right-8 z-50 w-52 bg-[#18181b] border border-border rounded-xl shadow-2xl overflow-hidden py-2">
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
-                          <Edit2 className="w-4 h-4" /> Edit Plan
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
-                          <Users className="w-4 h-4" /> View Members
-                        </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors text-sm text-text-primary">
-                          <PauseCircle className="w-4 h-4" /> Deactivate Plan
-                        </button>
-                        <div className="h-px bg-border/50 my-1"></div>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-error/10 transition-colors text-sm text-error">
-                          <Trash2 className="w-4 h-4" /> Delete Plan
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Tip Banner */}
-      <div className="mt-4 md:mt-6 bg-[#2a1a10] border border-primary/20 rounded-xl p-4 flex gap-3 items-start">
-        <Lightbulb className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold text-primary mb-1">Tip</p>
-          <p className="text-text-secondary text-sm leading-relaxed">
-            You can create custom plans like student, couple or morning batch plans based on your gym's needs.
-          </p>
-        </div>
-      </div>
+
+
+      <AddPlanModal 
+        isOpen={isAddPlanModalOpen} 
+        onClose={handleCloseAddPlan} 
+        planToEdit={planToEdit}
+      />
+
+      <PlanDetailsModal
+        isOpen={!!selectedPlan}
+        onClose={() => setSelectedPlan(null)}
+        plan={selectedPlan}
+        onEdit={(p) => handleEditPlan(p, true)}
+        onDelete={(p) => handleDeletePlan(p, true)}
+        onDeactivate={(p) => handleDeactivatePlan(p, true)}
+      />
+      
+      <DeletePlanModal
+        isOpen={isDeletePlanModalOpen}
+        onClose={() => setIsDeletePlanModalOpen(false)}
+        plan={planToDelete}
+      />
+
+      <DeactivatePlanModal
+        isOpen={isDeactivatePlanModalOpen}
+        onClose={() => setIsDeactivatePlanModalOpen(false)}
+        plan={planToDeactivate}
+      />
     </div>
   );
 };

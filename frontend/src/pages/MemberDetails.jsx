@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import SendReminderModal from '../components/SendReminderModal';
 import EditMemberModal from '../components/EditMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
@@ -11,7 +11,11 @@ import {
 
 const MemberDetails = () => {
   const { id } = useParams();
+  const location = useLocation();
   const [isPaid, setIsPaid] = useState(false);
+  
+  const fromPath = location.state?.from || '/members';
+  const fromName = location.state?.fromName || 'Members';
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -45,7 +49,7 @@ const MemberDetails = () => {
 
       {/* Desktop Breadcrumb */}
       <div className="hidden md:flex items-center gap-2 text-sm mb-6">
-        <Link to="/members" className="text-text-secondary hover:text-text-primary transition-colors">Members</Link>
+        <Link to={fromPath} className="text-text-secondary hover:text-text-primary transition-colors">{fromName}</Link>
         <ChevronRight className="w-4 h-4 text-text-secondary" />
         <span className="font-bold text-text-primary">{member.name}</span>
       </div>
