@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, MoreVertical, Download, RefreshCw, X, ChevronLeft, ChevronRight, Calendar, Eye, Edit, Trash2, UserPlus } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AddMemberModal from '../components/AddMemberModal';
 
 const membersData = [
@@ -31,7 +31,30 @@ const getInitials = (name) => {
 
 const Members = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('All');
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialTab = queryParams.get('tab') || 'All';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [location.search]);
+
+  const filteredMembers = membersData.filter(member => {
+    if (activeTab === 'All') return true;
+    return member.status === activeTab;
+  });
+
+  const counts = {
+    'All': membersData.length,
+    'Active': membersData.filter(m => m.status === 'Active').length,
+    'Due Soon': membersData.filter(m => m.status === 'Due Soon').length,
+    'Overdue': membersData.filter(m => m.status === 'Overdue').length,
+  };
   const [isMobileMoreMenuOpen, setIsMobileMoreMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -157,28 +180,28 @@ const Members = () => {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
           <button 
-            onClick={() => setActiveTab('All')}
+            onClick={() => { setActiveTab('All'); navigate('/members?tab=All', { replace: true }); }}
             className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'All' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
           >
-            All (24)
+            All ({counts['All']})
           </button>
           <button 
-            onClick={() => setActiveTab('Active')}
+            onClick={() => { setActiveTab('Active'); navigate('/members?tab=Active', { replace: true }); }}
             className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Active' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
           >
-            Active (18)
+            Active ({counts['Active']})
           </button>
           <button 
-            onClick={() => setActiveTab('Due Soon')}
+            onClick={() => { setActiveTab('Due Soon'); navigate('/members?tab=Due Soon', { replace: true }); }}
             className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Due Soon' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
           >
-            Due Soon (4)
+            Due Soon ({counts['Due Soon']})
           </button>
           <button 
-            onClick={() => setActiveTab('Overdue')}
+            onClick={() => { setActiveTab('Overdue'); navigate('/members?tab=Overdue', { replace: true }); }}
             className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Overdue' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
           >
-            Overdue (2)
+            Overdue ({counts['Overdue']})
           </button>
         </div>
 
@@ -285,7 +308,7 @@ const Members = () => {
             </tr>
           </thead>
           <tbody>
-            {membersData.map((member, index) => (
+            {filteredMembers.map((member, index) => (
               <tr 
                 key={member.id} 
                 className="border-b border-border hover:bg-white/5 transition-colors text-sm cursor-pointer"
@@ -348,7 +371,7 @@ const Members = () => {
         
         {/* Pagination Desktop */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-          <span className="text-sm text-text-secondary">Showing 1 – 10 of 24 members</span>
+          <span className="text-sm text-text-secondary">Showing 1 – {filteredMembers.length} of {filteredMembers.length} members</span>
           <div className="flex items-center gap-2">
             <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-surface text-text-secondary hover:text-text-primary">
               <ChevronLeft className="w-4 h-4" />
@@ -371,7 +394,7 @@ const Members = () => {
 
       {/* Mobile Cards List */}
       <div className="md:hidden flex flex-col gap-3">
-        {membersData.map((member) => (
+        {filteredMembers.map((member) => (
           <div key={member.id} className="bg-surface border border-border rounded-xl p-4 flex items-center justify-between relative">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full border-2 border-[#B45309] bg-[#1A0F00] shadow-sm flex items-center justify-center font-bold text-white text-xl tracking-wide">
@@ -409,10 +432,10 @@ const Members = () => {
       {isMobileMoreMenuOpen && (
         <>
           <div 
-            className="fixed inset-0 z-[90]"
+            className="fixed inset-0 z-[90] bg-black/20 backdrop-blur-sm transition-all"
             onClick={() => setIsMobileMoreMenuOpen(false)}
           ></div>
-          <div className="absolute top-0 right-4 z-[100] bg-[#1e1e1e] border border-border rounded-xl shadow-lg w-56 p-2 flex flex-col gap-1 overflow-hidden" style={{marginTop: '-2rem'}}>
+          <div className="absolute top-0 right-4 z-[100] bg-[#1e1e1e] border border-primary rounded-xl shadow-lg w-56 p-2 flex flex-col gap-1 overflow-hidden" style={{marginTop: '-2rem'}}>
             <button 
               className="flex items-center gap-3 px-3 py-3 text-sm text-text-primary hover:bg-white/5 rounded-lg w-full text-left"
               onClick={() => {

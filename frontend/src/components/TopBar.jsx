@@ -28,7 +28,14 @@ const TopBar = () => {
 
 
   return (
-    <header className="fixed top-0 left-0 w-full flex items-center justify-between h-[72px] px-4 md:px-6 bg-[#111111] border-b border-[#262626] z-40">
+    <header 
+      className="fixed top-0 left-0 w-full flex items-center justify-between h-[72px] px-4 md:px-6 border-b border-[#262626] z-40"
+      style={{
+        backgroundImage: `url('/home/header-background.png')`,
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
       
       {/* Center Logo (All screens) */}
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center pointer-events-none z-0">
@@ -44,7 +51,7 @@ const TopBar = () => {
             <button onClick={handleBack} className="text-text-primary p-2 -ml-2 relative z-10">
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <img src="/home/app-name.png" alt="Fitness Factory" className="h-[36px] w-auto object-contain ml-1" style={{ transform: 'scale(1.4)', transformOrigin: 'left center' }} />
+            <img src="/home/navbar-logo.png" alt="Navbar Logo" className="h-[52px] w-auto object-contain ml-1" />
           </div>
           
           {isPaymentsView || isUpcomingPayments || isRecentPayments ? (
@@ -69,13 +76,13 @@ const TopBar = () => {
         </div>
       ) : (
         <Link to="/" className="md:hidden flex items-center">
-          <img src="/home/app-name.png" alt="Fitness Factory" className="h-[36px] w-auto object-contain" style={{ transform: 'scale(1.4)', transformOrigin: 'left center' }} />
+          <img src="/home/navbar-logo.png" alt="Navbar Logo" className="h-[52px] w-auto object-contain" />
         </Link>
       )}
 
       {/* Desktop Logo */}
       <Link to="/" className="hidden md:flex items-center h-[72px]">
-        <img src="/home/app-name.png" alt="Fitness Factory" className="h-[56px] w-auto object-contain" style={{ transform: 'scale(1.5)', transformOrigin: 'left center' }} />
+        <img src="/home/navbar-logo.png" alt="Navbar Logo" className="h-[60px] w-auto object-contain" />
       </Link>
 
 

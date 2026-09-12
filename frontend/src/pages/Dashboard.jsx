@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import { UpcomingPaymentsTable, RecentPaymentsTable } from '../components/PaymentsTable';
 import Banner from '../components/Banner';
-import AddMemberModal from '../components/AddMemberModal';
 import { Users, UserCheck, Clock, AlertCircle } from 'lucide-react';
 
 // Mock Data
@@ -23,7 +23,7 @@ const recentPaymentsData = [
 ];
 
 const Dashboard = () => {
-  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <>
@@ -40,6 +40,7 @@ const Dashboard = () => {
           icon={Users} 
           colorClass="text-primary" 
           bgClass="bg-primary/10" 
+          onClick={() => navigate('/members?tab=All')}
         />
         <StatCard 
           title="Active Members" 
@@ -47,6 +48,7 @@ const Dashboard = () => {
           icon={UserCheck} 
           colorClass="text-success" 
           bgClass="bg-success/10" 
+          onClick={() => navigate('/members?tab=Active')}
         />
         <StatCard 
           title="Due Tomorrow" 
@@ -54,6 +56,7 @@ const Dashboard = () => {
           icon={Clock} 
           colorClass="text-warning" 
           bgClass="bg-warning/10" 
+          onClick={() => navigate('/members?tab=Due Soon')}
         />
         <StatCard 
           title="Overdue" 
@@ -61,6 +64,7 @@ const Dashboard = () => {
           icon={AlertCircle} 
           colorClass="text-danger" 
           bgClass="bg-danger/10" 
+          onClick={() => navigate('/members?tab=Overdue')}
         />
       </div>
 
@@ -74,21 +78,6 @@ const Dashboard = () => {
       <div className="hidden md:block">
         <Banner />
       </div>
-
-        {/* Mobile Register New Member Button */}
-      <div className="md:hidden mt-6 mb-4">
-        <button 
-          onClick={() => setIsAddMemberModalOpen(true)}
-          className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
-        >
-          <span className="text-xl leading-none mb-0.5">+</span> Register New Member
-        </button>
-      </div>
-
-      <AddMemberModal 
-        isOpen={isAddMemberModalOpen} 
-        onClose={() => setIsAddMemberModalOpen(false)} 
-      />
     </>
   );
 };
