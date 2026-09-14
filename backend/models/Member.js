@@ -34,6 +34,10 @@ const memberSchema = new mongoose.Schema(
       required: true,
       maxlength: 20,
     },
+    start_date: {
+      type: Date,
+      default: null,
+    },
     deleted_at: {
       type: Date,
       default: null,

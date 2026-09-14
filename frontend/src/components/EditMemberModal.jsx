@@ -1,21 +1,86 @@
-import React, { useState } from 'react';
-import { ChevronLeft, X, MapPin, Phone, Calendar, IndianRupee, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, X, MapPin, Phone, Calendar, IndianRupee, ChevronDown, AlertCircle, Loader2 } from 'lucide-react';
+import useMemberStore from '../store/useMemberStore';
+import usePlanStore from '../store/usePlanStore';
 
 const EditMemberModal = ({ isOpen, onClose, member }) => {
+  const { updateMember } = useMemberStore();
+  const { plans, fetchPlans } = usePlanStore();
+  
+  useEffect(() => {
+    fetchPlans();
+  }, [fetchPlans]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
     name: member?.name || '',
     phone: member?.phone || '',
-    address: member?.location || '', // Renamed location to address per user request
-    plan: member?.plan || 'Monthly',
-    amount: member?.amount ? member.amount.replace('₹', '').replace(',', '') : '1000',
-    startDate: member?.startDate || '10 Aug 2026',
+    address: member?.location || '',
+    plan_id: member?.plan_id || '',
+    amount: member?.amount ? member.amount.replace('₹', '').replace(',', '') : '',
+    startDate: member?.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : '',
     status: member?.status || 'Active',
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    let processedValue = value;
+    if (name === 'phone') {
+      processedValue = processedValue.replace(/\D/g, '');
+      if (processedValue.length > 10) {
+        processedValue = processedValue.slice(-10);
+      }
+    }
+
+    if (name === 'plan_id') {
+      const selectedPlan = plans.find(p => p.id === processedValue);
+      setFormData(prev => ({ 
+        ...prev, 
+        plan_id: processedValue,
+        amount: selectedPlan ? selectedPlan.price.toString() : prev.amount
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: processedValue }));
+    }
   };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      setError('');
+      await updateMember(member._id, {
+        name: formData.name,
+        mobile_number: formData.phone,
+        address: formData.address,
+        status: formData.status.toLowerCase(),
+        plan_id: formData.plan_id,
+        start_date: formData.startDate,
+      });
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to update member details');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && member) {
+      setFormData({
+        name: member.name || '',
+        phone: member.phone || '',
+        address: member.location || '',
+        plan_id: member.plan_id || '',
+        amount: member.amount ? member.amount.replace('₹', '').replace(',', '') : '',
+        startDate: member.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : '',
+        status: member.status || 'Active',
+      });
+      setError('');
+    }
+  }, [isOpen, member]);
 
   if (!isOpen) return null;
 
@@ -74,6 +139,13 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
             </div>
           </div>
 
+          {error && (
+            <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
           {/* Form Fields */}
           <div className="flex flex-col gap-6">
             
@@ -99,6 +171,8 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -127,40 +201,39 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
                   <label className="text-sm font-medium text-text-secondary">Plan *</label>
                   <div className="relative">
                     <select 
-                      name="plan"
-                      value={formData.plan}
+                      name="plan_id"
+                      value={formData.plan_id}
                       onChange={handleChange}
                       className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
                     >
-                      <option value="Monthly">Monthly</option>
-                      <option value="3 Months">3 Months</option>
-                      <option value="6 Months">6 Months</option>
-                      <option value="1 Year">1 Year</option>
+                      <option value="" disabled>Select a plan</option>
+                      {plans.filter(p => p.is_active || p.id === member?.plan_id).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-text-secondary">Amount (₹) *</label>
+                  <label className="text-sm font-medium text-text-secondary">Amount (Not Editable)</label>
                   <input 
                     type="text" 
+                    disabled
                     name="amount"
                     value={formData.amount}
-                    onChange={handleChange}
-                    className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
+                    className="w-full bg-surface/50 md:bg-bg/50 border border-border rounded-xl px-4 py-3 text-text-secondary text-sm cursor-not-allowed"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-text-secondary">Start Date *</label>
                   <div className="relative">
                     <input 
-                      type="text" 
+                      type="date" 
                       name="startDate"
                       value={formData.startDate}
                       onChange={handleChange}
-                      className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 pr-10 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
+                      className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors [color-scheme:dark]"
                     />
-                    <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -199,12 +272,42 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
           >
             Cancel
           </button>
-          <button className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-8 rounded-xl transition-colors">
-            Save Changes
+          <button 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-8 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="w-5 h-5 animate-spin" /> Saving...</>
+            ) : (
+              'Save Changes'
+            )}
           </button>
         </div>
 
       </div>
+
+      {/* Error Modal Overlay */}
+      {error && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface border border-border rounded-3xl p-8 flex flex-col items-center max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-danger/20 rounded-full flex items-center justify-center mb-6">
+              <AlertCircle className="w-8 h-8 text-danger" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 text-center">Error</h3>
+            <p className="text-text-secondary text-center mb-8">
+              {error}
+            </p>
+            <button 
+              onClick={() => setError('')}
+              className="w-full bg-surface hover:bg-bg border border-border text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

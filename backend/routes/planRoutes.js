@@ -8,6 +8,7 @@ const {
   getPlanDetails,
   editPlan,
   archivePlan,
+  getPlanMembers,
 } = require('../controllers/planController');
 
 const {
@@ -31,5 +32,7 @@ router
   .get(idParamValidator, validate, getPlanDetails)
   .put(updatePlanValidator, validate, editPlan)
   .delete(idParamValidator, validate, archivePlan);
+
+router.get('/:id/members', idParamValidator, validate, getPlanMembers);
 
 module.exports = router;

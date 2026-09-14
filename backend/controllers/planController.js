@@ -51,7 +51,16 @@ exports.listPlans = async (req, res, next) => {
     }
 
     const total = await Plan.countDocuments(query);
-    const plans = await Plan.find(query).skip(startIndex).limit(limit).sort({ created_at: -1 });
+    const plans = await Plan.find(query).skip(startIndex).limit(limit).sort({ price: 1 }).lean();
+
+    const Membership = require('../models/Membership');
+    const planIds = plans.map(p => p.id);
+    const activeMemberships = await Membership.find({ plan_id: { $in: planIds }, status: 'active' }).lean();
+
+    const plansWithCounts = plans.map(plan => {
+      const count = activeMemberships.filter(m => m.plan_id === plan.id).length;
+      return { ...plan, active_members_count: count };
+    });
 
     res.status(200).json({
       success: true,
@@ -62,7 +71,7 @@ exports.listPlans = async (req, res, next) => {
         total,
         pages: Math.ceil(total / limit),
       },
-      data: plans,
+      data: plansWithCounts,
     });
   } catch (error) {
     next(error);
@@ -131,7 +140,20 @@ exports.editPlan = async (req, res, next) => {
     }
 
     if (duration_months !== undefined) plan.duration_months = duration_months;
-    if (price !== undefined) plan.price = price;
+    
+    if (price !== undefined) {
+      const priceChanged = plan.price !== price;
+      plan.price = price;
+      
+      if (priceChanged) {
+        const Membership = require('../models/Membership');
+        await Membership.updateMany(
+          { plan_id: plan.id, status: 'active' },
+          { $set: { amount: price } }
+        );
+      }
+    }
+    
     if (is_active !== undefined) plan.is_active = is_active;
 
     await plan.save();
@@ -146,23 +168,61 @@ exports.editPlan = async (req, res, next) => {
   }
 };
 
-// @desc    Archive (deactivate) a plan
+// @desc    Delete a plan permanently
 // @route   DELETE /api/plans/:id
 // @access  Public/Private
 exports.archivePlan = async (req, res, next) => {
   try {
-    const plan = await Plan.findOne({ id: req.params.id });
+    const plan = await Plan.findOneAndDelete({ id: req.params.id });
 
     if (!plan) {
       return res.status(404).json({ success: false, message: 'Plan not found' });
     }
 
-    plan.is_active = false;
-    await plan.save();
+    res.status(200).json({
+      success: true,
+      message: 'Plan deleted permanently',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get members subscribed to a plan
+// @route   GET /api/plans/:id/members
+// @access  Public/Private
+exports.getPlanMembers = async (req, res, next) => {
+  try {
+    const Membership = require('../models/Membership');
+    const Member = require('../models/Member');
+
+    const plan = await Plan.findOne({ id: req.params.id });
+    if (!plan) {
+      return res.status(404).json({ success: false, message: 'Plan not found' });
+    }
+
+    const activeMemberships = await Membership.find({ plan_id: plan.id, status: 'active' }).lean();
+    const memberIds = activeMemberships.map(m => m.member_id);
+
+    const members = await Member.find({ id: { $in: memberIds }, deleted_at: null }).lean();
+
+    const formattedMembers = members.map(m => {
+      const membership = activeMemberships.find(mem => mem.member_id?.toString() === m.id?.toString());
+      return {
+        id: m.id,
+        serial_no: m.serial_no,
+        name: m.name,
+        phone: m.mobile_number,
+        joinDate: membership?.start_date,
+        nextDueDate: membership?.end_date,
+        status: 'Active'
+      };
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Plan archived (deactivated) successfully',
+      count: formattedMembers.length,
+      data: formattedMembers,
     });
   } catch (error) {
     next(error);

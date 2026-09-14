@@ -43,6 +43,8 @@ exports.updateMemberValidator = [
     .matches(/^\d{10}$/)
     .withMessage('Mobile number must contain exactly 10 digits'),
   body('address').optional().trim(),
+  body('plan_id').optional().isUUID().withMessage('Invalid Plan ID format'),
+  body('start_date').optional().isISO8601().withMessage('Invalid date format'),
   body('status')
     .optional()
     .trim()

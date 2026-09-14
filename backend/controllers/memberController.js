@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Member = require('../models/Member');
 const Membership = require('../models/Membership');
 const Plan = require('../models/Plan');
+const Payment = require('../models/Payment');
+const Reminder = require('../models/Reminder');
 
 const attachCurrentMembership = async (membersList) => {
   if (!membersList.length) return [];
@@ -16,12 +18,12 @@ const attachCurrentMembership = async (membersList) => {
   const plans = await Plan.find({ id: { $in: planIds } }).lean();
 
   return membersList.map((member) => {
-    const mMemberships = activeMemberships.filter((m) => m.member_id === member.id);
+    const mMemberships = activeMemberships.filter((m) => m.member_id?.toString() === member.id?.toString());
     mMemberships.sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
     const current = mMemberships[0];
 
     if (current) {
-      const plan = plans.find((p) => p.id === current.plan_id);
+      const plan = plans.find((p) => p.id?.toString() === current.plan_id?.toString());
       member.currentMembership = {
         planId: current.plan_id,
         planName: plan ? plan.name : 'Unknown',
@@ -42,7 +44,7 @@ const attachCurrentMembership = async (membersList) => {
 // @access  Public/Private
 exports.registerMember = async (req, res, next) => {
   try {
-    const { serial_no, name, address, mobile_number, plan_id } = req.body;
+    const { serial_no, name, address, mobile_number, plan_id, start_date } = req.body;
 
     // Verify if the plan exists
     const plan = await Plan.findOne({ id: plan_id });
@@ -56,6 +58,8 @@ exports.registerMember = async (req, res, next) => {
       return res.status(409).json({ success: false, message: 'Serial number already exists' });
     }
 
+    const parsedStartDate = start_date ? new Date(start_date) : new Date();
+
     // Create the member
     const newMember = new Member({
       serial_no,
@@ -63,20 +67,20 @@ exports.registerMember = async (req, res, next) => {
       address,
       mobile_number,
       status: 'active',
+      start_date: parsedStartDate,
     });
 
     await newMember.save();
 
     // Calculate end date based on plan duration
-    const start_date = new Date();
-    const end_date = new Date();
-    end_date.setMonth(start_date.getMonth() + plan.duration_months);
+    const end_date = new Date(parsedStartDate);
+    end_date.setMonth(parsedStartDate.getMonth() + plan.duration_months);
 
     // Create initial membership record
     const membership = new Membership({
       member_id: newMember.id,
       plan_id: plan.id,
-      start_date,
+      start_date: parsedStartDate,
       end_date,
       amount: plan.price,
       status: 'active',
@@ -94,7 +98,7 @@ exports.registerMember = async (req, res, next) => {
             planId: plan.id,
             planName: plan.name,
             amount: plan.price,
-            startDate: start_date,
+            startDate: parsedStartDate,
             endDate: end_date,
             status: 'active',
           }
@@ -204,7 +208,7 @@ exports.getMemberDetails = async (req, res, next) => {
 // @access  Public/Private
 exports.editMember = async (req, res, next) => {
   try {
-    const { name, address, mobile_number, status } = req.body;
+    const { name, address, mobile_number, status, plan_id, start_date } = req.body;
 
     const member = await Member.findOne({ id: req.params.id, deleted_at: null });
 
@@ -220,39 +224,62 @@ exports.editMember = async (req, res, next) => {
 
     await member.save();
 
+    // Check if membership details are being updated
+    if (plan_id || start_date) {
+      const activeMembership = await Membership.findOne({ member_id: member.id, status: 'active' }).sort({ end_date: -1 });
+      
+      if (activeMembership) {
+        let planToUseId = plan_id || activeMembership.plan_id;
+        const plan = await Plan.findOne({ id: planToUseId });
+        
+        if (plan) {
+           const parsedStartDate = start_date ? new Date(start_date) : new Date(activeMembership.start_date);
+           const end_date = new Date(parsedStartDate);
+           end_date.setMonth(parsedStartDate.getMonth() + plan.duration_months);
+
+           activeMembership.plan_id = plan.id;
+           activeMembership.start_date = parsedStartDate;
+           activeMembership.end_date = end_date;
+           activeMembership.amount = plan.price;
+           await activeMembership.save();
+        }
+      }
+    }
+
+    const [memberWithMembership] = await attachCurrentMembership([member.toObject()]);
+
     res.status(200).json({
       success: true,
       message: 'Member updated successfully',
-      data: member,
+      data: memberWithMembership,
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Archive (soft delete) a member
+// @desc    Permanently delete a member and all associated data
 // @route   DELETE /api/members/:id
 // @access  Public/Private
 exports.archiveMember = async (req, res, next) => {
   try {
-    const member = await Member.findOne({ id: req.params.id, deleted_at: null });
+    const member = await Member.findOne({ id: req.params.id });
 
     if (!member) {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
-    member.deleted_at = new Date();
-    await member.save();
+    // Permanently delete associated data to prevent orphan records
+    await Membership.deleteMany({ member_id: member.id });
+    await Payment.deleteMany({ member_id: member.id });
+    await Reminder.deleteMany({ member_id: member.id });
 
-    // Optionally mark memberships as inactive/archived
-    await Membership.updateMany(
-      { member_id: member.id },
-      { $set: { status: 'archived' } }
-    );
+    // Delete the member record itself
+    await Member.deleteOne({ id: req.params.id });
 
     res.status(200).json({
       success: true,
-      message: 'Member archived successfully',
+      message: 'Member and all associated data permanently deleted successfully',
     });
   } catch (error) {
     next(error);

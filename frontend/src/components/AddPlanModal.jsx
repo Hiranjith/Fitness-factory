@@ -1,58 +1,64 @@
 import React, { useState } from 'react';
-import { ChevronLeft, X, Calendar, IndianRupee, Tag, ChevronDown, CheckCircle } from 'lucide-react';
-
-const categories = [
-  'General Fitness',
-  'Weight Loss',
-  'Muscle Gain',
-  'Personal Training',
-  'Student',
-  'Family',
-  'Other'
-];
+import { ChevronLeft, X, Calendar, IndianRupee, CheckCircle } from 'lucide-react';
+import usePlanStore from '../store/usePlanStore';
 
 const AddPlanModal = ({ isOpen, onClose, planToEdit }) => {
+  const { createPlan, updatePlan } = usePlanStore();
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
     price: '',
-    duration: '1 Month',
-    category: 'General Fitness',
+    duration_months: '',
   });
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && planToEdit) {
       setFormData({
         name: planToEdit.name || '',
-        description: planToEdit.description || '',
-        price: planToEdit.price ? planToEdit.price.replace(/[^0-9]/g, '') : '',
-        duration: planToEdit.duration || '1 Month',
-        category: planToEdit.category || 'General Fitness',
+        price: planToEdit.price ? planToEdit.price.toString() : '',
+        duration_months: planToEdit.duration_months || '',
       });
+      setError(null);
     } else if (isOpen && !planToEdit) {
       setFormData({
         name: '',
-        description: '',
         price: '',
-        duration: '1 Month',
-        category: 'General Fitness',
+        duration_months: '',
       });
+      setError(null);
     }
   }, [isOpen, planToEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'duration_months' ? Number(value) : value }));
   };
 
-  const handleCategoryClick = (cat) => {
-    setFormData(prev => ({ ...prev, category: cat }));
-  };
+  const handleSave = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      
+      const payload = {
+        name: formData.name,
+        price: Number(formData.price),
+        duration_months: formData.duration_months,
+      };
 
-  const handleSave = () => {
-    // Here you would typically save the plan via an API call
-    setIsSuccessModalOpen(true);
+      if (planToEdit) {
+        await updatePlan(planToEdit.id, payload);
+      } else {
+        await createPlan(payload);
+      }
+      
+      setIsSuccessModalOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save plan');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOk = () => {
@@ -106,24 +112,6 @@ const AddPlanModal = ({ isOpen, onClose, planToEdit }) => {
                 className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors placeholder-text-secondary/50"
               />
             </div>
-            
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-text-secondary">Description (Optional)</label>
-              <div className="relative">
-                <textarea 
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="e.g. General fitness plan with full gym access"
-                  rows="3"
-                  maxLength={100}
-                  className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors placeholder-text-secondary/50 resize-none"
-                ></textarea>
-                <span className="absolute bottom-3 right-4 text-[10px] text-text-secondary">
-                  {formData.description.length}/100
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Pricing & Duration Card */}
@@ -142,68 +130,34 @@ const AddPlanModal = ({ isOpen, onClose, planToEdit }) => {
                   value={formData.price}
                   onChange={handleChange}
                   placeholder="e.g. 1000"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors placeholder-text-secondary/50"
                 />
               </div>
               
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-text-secondary">Duration <span className="text-error">*</span></label>
-                <div className="relative">
-                  <select 
-                    name="duration"
-                    value={formData.duration}
-                    onChange={handleChange}
-                    className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
-                  >
-                    <option value="1 Month">1 Month</option>
-                    <option value="3 Months">3 Months</option>
-                    <option value="6 Months">6 Months</option>
-                    <option value="1 Year">1 Year</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
-                </div>
+                <label className="text-sm font-medium text-text-secondary">Duration (Months) <span className="text-error">*</span></label>
+                <input 
+                  type="number" 
+                  name="duration_months"
+                  value={formData.duration_months}
+                  onChange={handleChange}
+                  placeholder="e.g. 1"
+                  min="1"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors placeholder-text-secondary/50"
+                />
               </div>
             </div>
           </div>
 
-          {/* Plan Category Card */}
-          <div className="bg-[#18181b] border border-border rounded-2xl p-4 md:p-6 flex flex-col gap-4">
-            <div className="flex items-center gap-3 mb-2">
-              <Tag className="w-6 h-6 text-primary" />
-              <h3 className="font-bold text-lg">Plan Category</h3>
+          {error && (
+            <div className="text-error text-sm p-3 bg-error/10 border border-error/20 rounded-xl">
+              {error}
             </div>
-            
-            <div className="relative mb-2">
-              <select 
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full bg-[#18181b] border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
-            </div>
-
-            <div className="flex flex-wrap gap-2 mt-2">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => handleCategoryClick(cat)}
-                  className={`px-4 py-2 rounded-full text-xs font-medium transition-colors border ${
-                    formData.category === cat 
-                      ? 'border-primary text-primary bg-primary/10' 
-                      : 'border-border text-text-secondary hover:bg-white/5'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
+          )}
 
         </div>
 
@@ -211,9 +165,10 @@ const AddPlanModal = ({ isOpen, onClose, planToEdit }) => {
         <div className="p-4 md:p-6 border-t border-border bg-[#18181b]">
           <button 
             onClick={handleSave}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
+            disabled={isSubmitting}
+            className="w-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
           >
-            {planToEdit ? 'Update Plan' : 'Save Plan'}
+            {isSubmitting ? 'Saving...' : (planToEdit ? 'Update Plan' : 'Save Plan')}
           </button>
         </div>
 

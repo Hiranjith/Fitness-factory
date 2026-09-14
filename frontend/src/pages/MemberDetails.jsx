@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import SendReminderModal from '../components/SendReminderModal';
 import EditMemberModal from '../components/EditMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
 import { 
   ChevronLeft, MoreVertical, Phone, MapPin, 
   Calendar, CreditCard, Clock, CheckCircle2, 
-  PenSquare, Trash2, IndianRupee, Send, FileText, ChevronRight, MoreHorizontal
+  PenSquare, Trash2, IndianRupee, Send, FileText, ChevronRight, MoreHorizontal, Loader2
 } from 'lucide-react';
+import useMemberStore from '../store/useMemberStore';
 
 const MemberDetails = () => {
   const { id } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isPaid, setIsPaid] = useState(false);
   
   const fromPath = location.state?.from || '/members';
@@ -20,18 +22,40 @@ const MemberDetails = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Mock data for the specific member
+  const { currentMember, fetchMemberDetails, isLoading } = useMemberStore();
+
+  useEffect(() => {
+    fetchMemberDetails(id);
+  }, [id, fetchMemberDetails]);
+
+  if (isLoading || !currentMember) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-text-secondary gap-3 mt-20">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p>Loading member details...</p>
+      </div>
+    );
+  }
+
+  // Dynamic mapped data for the specific member
   const member = {
-    id: '001',
-    name: 'Rahul Kumar',
-    phone: '+91 98765 43210',
-    location: 'Kochi, Kerala',
-    plan: 'Monthly',
-    amount: '₹1,000',
-    startDate: '10 Aug 2026',
-    nextDueDate: '10 Sep 2026',
-    status: 'Active',
-    paymentDue: 'Tomorrow'
+    _id: currentMember.id, // For backend calls
+    id: String(currentMember.serial_no).padStart(3, '0'), // For display
+    name: currentMember.name || 'Unknown',
+    phone: currentMember.mobile_number || 'N/A',
+    location: currentMember.address || 'Location unavailable',
+    plan: currentMember.currentMembership?.planName || 'N/A',
+    plan_id: currentMember.currentMembership?.planId || '',
+    amount: currentMember.currentMembership?.amount ? `₹${currentMember.currentMembership.amount}` : 'N/A',
+    startDate: currentMember.currentMembership?.startDate 
+      ? new Date(currentMember.currentMembership.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) 
+      : 'N/A',
+    rawStartDate: currentMember.currentMembership?.startDate || '',
+    nextDueDate: currentMember.currentMembership?.endDate 
+      ? new Date(currentMember.currentMembership.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) 
+      : 'N/A',
+    status: currentMember.status === 'active' ? 'Active' : (currentMember.status?.charAt(0).toUpperCase() + currentMember.status?.slice(1)),
+    paymentDue: 'Tomorrow' // static for now as requested
   };
 
   const paymentHistory = [
@@ -172,7 +196,7 @@ const MemberDetails = () => {
                 <PenSquare className="w-6 h-6 text-purple-400" />
                 <span className="text-[11px] text-text-primary font-medium text-center">Edit Member</span>
               </button>
-              <Link to={`/member/${member.id}/payments`} className="bg-surface border border-border rounded-2xl p-4 flex flex-col items-center justify-center gap-3">
+              <Link to={`/member/${member._id}/payments`} className="bg-surface border border-border rounded-2xl p-4 flex flex-col items-center justify-center gap-3">
                 <FileText className="w-6 h-6 text-blue-400" />
                 <span className="text-[11px] text-text-primary font-medium text-center">View Payments</span>
               </Link>
@@ -295,7 +319,7 @@ const MemberDetails = () => {
                 <ChevronRight className="w-5 h-5 text-text-secondary group-hover:text-primary transition-colors" />
               </button>
 
-              <Link to={`/member/${member.id}/payments`} className="flex items-center justify-between p-5 border-b border-border hover:bg-bg/50 transition-colors group">
+              <Link to={`/member/${member._id}/payments`} className="flex items-center justify-between p-5 border-b border-border hover:bg-bg/50 transition-colors group">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
                     <FileText className="w-5 h-5" />
@@ -344,6 +368,7 @@ const MemberDetails = () => {
         isOpen={isDeleteModalOpen} 
         onClose={() => setIsDeleteModalOpen(false)} 
         member={member} 
+        onDeleteSuccess={() => navigate(fromPath)}
       />
 
     </div>

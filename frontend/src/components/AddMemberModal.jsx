@@ -1,20 +1,90 @@
-import React, { useState } from 'react';
-import { ChevronLeft, X, MapPin, Phone, Calendar, IndianRupee, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, X, MapPin, Phone, Calendar, IndianRupee, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
+import usePlanStore from '../store/usePlanStore';
+import useMemberStore from '../store/useMemberStore';
 
 const AddMemberModal = ({ isOpen, onClose }) => {
+  const { plans, fetchPlans } = usePlanStore();
+  const { createMember, isLoading } = useMemberStore();
+
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [error, setError] = useState(null);
+
   const [formData, setFormData] = useState({
+    serial_no: '',
     name: '',
     phone: '',
     address: '',
-    plan: 'Monthly',
+    plan_id: '',
     amount: '',
-    startDate: '',
+    startDate: new Date().toISOString().split('T')[0],
     status: 'Active',
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      fetchPlans();
+      setError(null);
+      setFormData({
+        serial_no: '',
+        name: '',
+        phone: '',
+        address: '',
+        plan_id: '',
+        amount: '',
+        startDate: new Date().toISOString().split('T')[0],
+        status: 'Active',
+      });
+    }
+  }, [isOpen, fetchPlans]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    let processedValue = value;
+    if (name === 'phone') {
+      processedValue = processedValue.replace(/\D/g, '');
+      if (processedValue.length > 10) {
+        processedValue = processedValue.slice(-10);
+      }
+    }
+
+    setFormData(prev => {
+      const newData = { ...prev, [name]: processedValue };
+      if (name === 'plan_id') {
+        const selectedPlan = plans.find(p => p.id === processedValue);
+        if (selectedPlan) {
+          newData.amount = selectedPlan.price.toString();
+        }
+      }
+      return newData;
+    });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setError(null);
+      if (!formData.serial_no || !formData.name || !formData.phone || !formData.plan_id) {
+        setError("Please fill all required fields");
+        return;
+      }
+      await createMember({
+        serial_no: formData.serial_no,
+        name: formData.name,
+        mobile_number: formData.phone,
+        address: formData.address,
+        plan_id: formData.plan_id,
+        start_date: formData.startDate,
+      });
+      setIsSuccessModalOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to add member');
+    }
+  };
+
+  const handleOk = () => {
+    setIsSuccessModalOpen(false);
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -55,6 +125,16 @@ const AddMemberModal = ({ isOpen, onClose }) => {
               <h3 className="font-bold text-lg">Personal Information</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-sm font-medium text-text-secondary">Serial Number *</label>
+                  <input 
+                    type="number" 
+                    name="serial_no"
+                    value={formData.serial_no}
+                    onChange={handleChange}
+                    className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-text-secondary">Name *</label>
                   <input 
@@ -72,6 +152,8 @@ const AddMemberModal = ({ isOpen, onClose }) => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -100,15 +182,15 @@ const AddMemberModal = ({ isOpen, onClose }) => {
                   <label className="text-sm font-medium text-text-secondary">Plan *</label>
                   <div className="relative">
                     <select 
-                      name="plan"
-                      value={formData.plan}
+                      name="plan_id"
+                      value={formData.plan_id}
                       onChange={handleChange}
                       className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer"
                     >
-                      <option value="Monthly">Monthly</option>
-                      <option value="3 Months">3 Months</option>
-                      <option value="6 Months">6 Months</option>
-                      <option value="1 Year">1 Year</option>
+                      <option value="" disabled>Select a plan</option>
+                      {plans.filter(p => p.is_active).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                   </div>
@@ -127,13 +209,12 @@ const AddMemberModal = ({ isOpen, onClose }) => {
                   <label className="text-sm font-medium text-text-secondary">Start Date *</label>
                   <div className="relative">
                     <input 
-                      type="text" 
+                      type="date" 
                       name="startDate"
                       value={formData.startDate}
                       onChange={handleChange}
-                      className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 pr-10 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors"
+                      className="w-full bg-surface md:bg-bg border border-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-colors [color-scheme:dark]"
                     />
-                    <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -161,6 +242,8 @@ const AddMemberModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* Error banner removed - now handled via modal overlay */}
+
           </div>
         </div>
 
@@ -172,12 +255,59 @@ const AddMemberModal = ({ isOpen, onClose }) => {
           >
             Cancel
           </button>
-          <button className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-8 rounded-xl transition-colors">
-            Add Member
+          <button 
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="flex-1 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
+          >
+            {isLoading ? 'Adding...' : 'Add Member'}
           </button>
         </div>
 
       </div>
+
+      {/* Success Modal Overlay */}
+      {isSuccessModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface border border-border rounded-3xl p-8 flex flex-col items-center max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle className="w-8 h-8 text-success" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 text-center">Member Added!</h3>
+            <p className="text-text-secondary text-center mb-8">
+              The new member has been successfully registered.
+            </p>
+            <button 
+              onClick={handleOk}
+              className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal Overlay */}
+      {error && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-surface border border-border rounded-3xl p-8 flex flex-col items-center max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 bg-danger/20 rounded-full flex items-center justify-center mb-6">
+              <AlertCircle className="w-8 h-8 text-danger" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 text-center">Error</h3>
+            <p className="text-text-secondary text-center mb-8">
+              {error}
+            </p>
+            <button 
+              onClick={() => setError(null)}
+              className="w-full bg-surface hover:bg-bg border border-border text-white font-bold py-3.5 px-8 rounded-xl transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

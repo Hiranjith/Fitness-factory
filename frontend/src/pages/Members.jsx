@@ -3,24 +3,17 @@ import { Search, Filter, MoreVertical, Download, RefreshCw, X, ChevronLeft, Chev
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AddMemberModal from '../components/AddMemberModal';
 
-const membersData = [
-  { id: '001', name: 'Rahul Kumar', phone: '+91 98765 43210', plan: 'Monthly', amount: '₹1,000', nextDueDate: '5 Sep 2026', status: 'Active' },
-  { id: '014', name: 'Arun Kumar', phone: '+91 87654 32109', plan: '3 Months', amount: '₹2,500', nextDueDate: '12 Sep 2026', status: 'Due Soon' },
-  { id: '021', name: 'Sneha P', phone: '+91 76543 21098', plan: 'Monthly', amount: '₹1,000', nextDueDate: '1 Sep 2026', status: 'Overdue' },
-  { id: '027', name: 'Vishnu Raj', phone: '+91 65432 10987', plan: '6 Months', amount: '₹5,000', nextDueDate: '15 Sep 2026', status: 'Active' },
-  { id: '032', name: 'Manoj T', phone: '+91 98701 23456', plan: 'Monthly', amount: '₹1,000', nextDueDate: '10 Sep 2026', status: 'Due Soon' },
-  { id: '036', name: 'Divya S', phone: '+91 89876 54321', plan: 'Quarterly', amount: '₹3,000', nextDueDate: '20 Sep 2026', status: 'Active' },
-  { id: '041', name: 'Kiran Nair', phone: '+91 87650 12345', plan: 'Monthly', amount: '₹1,000', nextDueDate: '22 Sep 2026', status: 'Active' },
-  { id: '048', name: 'Pranav K', phone: '+91 76501 23456', plan: '1 Year', amount: '₹8,000', nextDueDate: '4 Sep 2026', status: 'Overdue' },
-  { id: '053', name: 'Neha Raj', phone: '+91 65401 23456', plan: '3 Months', amount: '₹2,500', nextDueDate: '25 Sep 2026', status: 'Active' },
-  { id: '058', name: 'Sagar P', phone: '+91 91234 56789', plan: 'Monthly', amount: '₹1,000', nextDueDate: '28 Sep 2026', status: 'Due Soon' },
-];
+import useMemberStore from '../store/useMemberStore';
+import usePlanStore from '../store/usePlanStore';
+
+// Removed dummy membersData
 
 const getStatusColor = (status) => {
-  switch (status) {
-    case 'Active': return 'bg-success/20 text-success';
-    case 'Due Soon': return 'bg-warning/20 text-warning';
-    case 'Overdue': return 'bg-danger/20 text-danger';
+  const s = status?.toLowerCase();
+  switch (s) {
+    case 'active': return 'bg-success/20 text-success';
+    case 'due soon': return 'bg-warning/20 text-warning';
+    case 'overdue': return 'bg-danger/20 text-danger';
     default: return 'bg-gray-500/20 text-gray-500';
   }
 };
@@ -35,6 +28,7 @@ const Members = () => {
   const queryParams = new URLSearchParams(location.search);
   const initialTab = queryParams.get('tab') || 'All';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -44,17 +38,9 @@ const Members = () => {
     }
   }, [location.search]);
 
-  const filteredMembers = membersData.filter(member => {
-    if (activeTab === 'All') return true;
-    return member.status === activeTab;
-  });
+  const { members, fetchMembers, isLoading } = useMemberStore();
+  const { plans, fetchPlans } = usePlanStore();
 
-  const counts = {
-    'All': membersData.length,
-    'Active': membersData.filter(m => m.status === 'Active').length,
-    'Due Soon': membersData.filter(m => m.status === 'Due Soon').length,
-    'Overdue': membersData.filter(m => m.status === 'Overdue').length,
-  };
   const [isMobileMoreMenuOpen, setIsMobileMoreMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -65,6 +51,56 @@ const Members = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterPlan, setFilterPlan] = useState('All Plans');
   const [filterDate, setFilterDate] = useState('All');
+
+  useEffect(() => {
+    fetchMembers();
+    fetchPlans();
+  }, [fetchMembers, fetchPlans]);
+
+  // Derive UI properties
+  const uiMembers = members.map(m => {
+    return {
+      ...m,
+      displayPhone: m.mobile_number,
+      displayPlan: m.currentMembership?.planName || 'N/A',
+      displayAmount: m.currentMembership?.amount ? `₹${m.currentMembership.amount}` : 'N/A',
+      displayNextDueDate: m.currentMembership?.endDate 
+        ? new Date(m.currentMembership.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'N/A',
+      displayStatus: m.status === 'active' ? 'Active' : m.status,
+    }
+  });
+
+  const filteredMembers = uiMembers.filter(member => {
+    if (activeTab !== 'All' && member.displayStatus !== activeTab) return false;
+    
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesName = member.name?.toLowerCase().includes(q);
+      const matchesPhone = member.mobile_number?.toLowerCase().includes(q);
+      const matchesSerial = member.serial_no?.toString().includes(q);
+      if (!matchesName && !matchesPhone && !matchesSerial) return false;
+    }
+
+    if (filterPlan !== 'All Plans' && member.displayPlan !== filterPlan) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  filteredMembers.sort((a, b) => {
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    return nameA.localeCompare(nameB);
+  });
+
+  const counts = {
+    'All': uiMembers.length,
+    'Active': uiMembers.filter(m => m.displayStatus === 'Active').length,
+    'Due Soon': uiMembers.filter(m => m.displayStatus === 'Due Soon').length,
+    'Overdue': uiMembers.filter(m => m.displayStatus === 'Overdue').length,
+  };
 
   useEffect(() => {
     const handleMoreMenuToggle = () => {
@@ -169,6 +205,8 @@ const Members = () => {
         <input 
           type="text" 
           placeholder="Search members..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="bg-transparent border-none outline-none text-text-primary w-full placeholder-text-secondary"
         />
         <button className="text-text-secondary ml-2 p-1" onClick={() => setIsFilterModalOpen(true)}>
@@ -212,6 +250,8 @@ const Members = () => {
             <input 
               type="text" 
               placeholder="Search members..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-text-primary text-sm w-full placeholder-text-secondary"
             />
           </div>
@@ -238,7 +278,7 @@ const Members = () => {
                    <div className="mb-5">
                      <p className="text-white font-medium mb-3 text-sm">Membership Plan</p>
                      <div className="flex flex-wrap gap-2">
-                       {['All Plans', 'Monthly', '3 Months', '6 Months', '1 Year'].map(plan => (
+                       {['All Plans', ...plans.map(p => p.name)].map(plan => (
                          <button 
                            key={plan}
                            onClick={() => setFilterPlan(plan)}
@@ -314,20 +354,20 @@ const Members = () => {
                 className="border-b border-border hover:bg-white/5 transition-colors text-sm cursor-pointer"
                 onClick={() => navigate(`/member/${member.id}`)}
               >
-                <td className="py-4 px-6 text-text-secondary">{String(index + 1).padStart(3, '0')}</td>
+                <td className="py-4 px-6 text-text-secondary">{String(member.serial_no).padStart(3, '0')}</td>
                 <td className="py-4 px-4 flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full border-2 border-[#B45309] bg-[#1A0F00] shadow-sm flex items-center justify-center font-bold text-white text-xs">
                     {getInitials(member.name)}
                   </div>
                   <span className="font-medium text-text-primary">{member.name}</span>
                 </td>
-                <td className="py-4 px-4 text-text-secondary">{member.phone}</td>
-                <td className="py-4 px-4 text-text-secondary">{member.plan}</td>
-                <td className="py-4 px-4 text-text-secondary">{member.amount}</td>
-                <td className="py-4 px-4 text-text-secondary">{member.nextDueDate}</td>
+                <td className="py-4 px-4 text-text-secondary">{member.displayPhone}</td>
+                <td className="py-4 px-4 text-text-secondary">{member.displayPlan}</td>
+                <td className="py-4 px-4 text-text-secondary">{member.displayAmount}</td>
+                <td className="py-4 px-4 text-text-secondary">{member.displayNextDueDate}</td>
                 <td className="py-4 px-4">
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusColor(member.status)}`}>
-                    {member.status}
+                  <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusColor(member.displayStatus)}`}>
+                    {member.displayStatus}
                   </span>
                 </td>
                 <td className="py-4 px-4 relative" onClick={(e) => e.stopPropagation()}>
@@ -402,22 +442,22 @@ const Members = () => {
               </div>
               <div className="flex flex-col">
                 <span className="font-medium text-text-primary text-base">{member.name}</span>
-                <span className="text-text-secondary text-sm">#{member.id}</span>
-                <span className="text-text-secondary text-sm">{member.plan} Plan</span>
+                <span className="text-text-secondary text-sm">#{String(member.serial_no).padStart(3, '0')}</span>
+                <span className="text-text-secondary text-sm">{member.displayPlan} Plan</span>
               </div>
             </div>
             
             <div className="flex flex-col items-end gap-1">
-              <span className={`px-2 py-0.5 rounded text-xs font-medium mb-1 ${getStatusColor(member.status)}`}>
-                {member.status}
+              <span className={`px-2 py-0.5 rounded text-xs font-medium mb-1 ${getStatusColor(member.displayStatus)}`}>
+                {member.displayStatus}
               </span>
               <div className="flex items-center gap-1">
-                <span className="font-bold text-base">{member.amount}</span>
+                <span className="font-bold text-base">{member.displayAmount}</span>
                 <ChevronRight className="w-4 h-4 text-text-secondary" />
               </div>
               <div className="flex items-center gap-1 text-text-secondary text-xs mt-1">
                 <Calendar className="w-3 h-3" />
-                <span>{member.nextDueDate}</span>
+                <span>{member.displayNextDueDate}</span>
               </div>
             </div>
             
@@ -537,7 +577,7 @@ const Members = () => {
                <div className="mb-6">
                  <p className="text-white font-medium mb-3">Membership Plan</p>
                  <div className="flex flex-wrap gap-3">
-                   {['All Plans', 'Monthly', '3 Months', '6 Months', '1 Year'].map(plan => (
+                   {['All Plans', ...plans.map(p => p.name)].map(plan => (
                      <button 
                        key={plan}
                        onClick={() => setFilterPlan(plan)}

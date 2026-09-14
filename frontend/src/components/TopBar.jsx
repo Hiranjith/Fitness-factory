@@ -54,9 +54,7 @@ const TopBar = () => {
             <img src="/home/navbar-logo.png" alt="Navbar Logo" className="h-[52px] w-auto object-contain ml-1" />
           </div>
           
-          {isPaymentsView || isUpcomingPayments || isRecentPayments ? (
-            <div className="w-10"></div>
-          ) : isMembers ? (
+          {isMembers ? (
             <div className="relative">
               <button 
                 className="text-text-primary p-2 -mr-2"
@@ -69,9 +67,7 @@ const TopBar = () => {
               </button>
             </div>
           ) : (
-            <button className="text-text-primary p-2 -mr-2">
-              <MoreVertical className="w-6 h-6" />
-            </button>
+            <div className="w-10"></div>
           )}
         </div>
       ) : (

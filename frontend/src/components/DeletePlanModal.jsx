@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { Trash2, CheckCircle } from 'lucide-react';
+import usePlanStore from '../store/usePlanStore';
 
 const DeletePlanModal = ({ isOpen, onClose, plan }) => {
+  const { deletePlan } = usePlanStore();
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!isOpen) return null;
 
-  const handleDelete = () => {
-    // Typically you would call an API here to delete the plan
-    setIsSuccessModalOpen(true);
+  const handleDelete = async () => {
+    try {
+      setIsSubmitting(true);
+      setError(null);
+      await deletePlan(plan.id);
+      setIsSuccessModalOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete plan');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOk = () => {
@@ -65,10 +77,20 @@ const DeletePlanModal = ({ isOpen, onClose, plan }) => {
           and cannot be undone.
         </p>
 
+        {error && (
+          <div className="w-full text-error text-sm p-3 mb-3 bg-error/10 border border-error/20 rounded-xl text-center">
+            {error}
+          </div>
+        )}
+
         {/* Buttons */}
         <div className="w-full flex flex-col gap-3">
-          <button onClick={handleDelete} className="w-full bg-[#ff453a] hover:bg-[#ff453a]/90 text-white font-bold py-4 rounded-[14px] transition-colors text-[15px]">
-            Delete Plan
+          <button 
+            onClick={handleDelete} 
+            disabled={isSubmitting}
+            className="w-full bg-[#ff453a] hover:bg-[#ff453a]/90 disabled:opacity-50 text-white font-bold py-4 rounded-[14px] transition-colors text-[15px]"
+          >
+            {isSubmitting ? 'Deleting...' : 'Delete Plan'}
           </button>
           
           <button 

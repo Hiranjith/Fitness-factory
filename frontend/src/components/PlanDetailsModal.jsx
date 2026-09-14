@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { X, ChevronLeft, Calendar, Edit2, Clock, Users, FileText, Trash2, Power, Search, MoreVertical, ChevronRight, ArrowRight } from 'lucide-react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-
-const planMembers = [
-  { id: '001', name: 'Rahul Kumar', phone: '+91 98765 43210', joinDate: '5 Aug 2026', nextDueDate: '5 Sep 2026', status: 'Active' },
-  { id: '014', name: 'Arun Kumar', phone: '+91 87654 32109', joinDate: '12 Jun 2026', nextDueDate: '12 Sep 2026', status: 'Active' },
-  { id: '021', name: 'Sneha P', phone: '+91 76543 21098', joinDate: '1 Aug 2026', nextDueDate: '1 Sep 2026', status: 'Active' },
-  { id: '027', name: 'Vishnu Raj', phone: '+91 65432 10987', joinDate: '15 Mar 2026', nextDueDate: '15 Sep 2026', status: 'Active' },
-  { id: '032', name: 'Manoj T', phone: '+91 98701 23456', joinDate: '10 Aug 2026', nextDueDate: '10 Sep 2026', status: 'Active' },
-];
+import api from '../api/axios';
 
 const getInitials = (name) => {
+  if (!name) return 'UN';
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 };
 
@@ -19,6 +13,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [realMembers, setRealMembers] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   
   const mobileView = searchParams.get('view') || 'details';
   
@@ -40,13 +36,23 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      if (plan) {
+        setIsLoadingMembers(true);
+        api.get(`/plans/${plan.id}/members`)
+          .then(res => {
+            setRealMembers(res.data.data || []);
+          })
+          .catch(err => console.error(err))
+          .finally(() => setIsLoadingMembers(false));
+      }
     } else {
       document.body.style.overflow = 'unset';
+      setRealMembers([]);
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen]);
+  }, [isOpen, plan]);
 
   if (!isOpen || !plan) return null;
 
@@ -60,7 +66,7 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
             <button onClick={() => setMobileView('details')} className="p-2 text-text-primary mr-2">
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-xl font-bold text-white">Plan Members ({planMembers.length})</h1>
+            <h1 className="text-xl font-bold text-white">Plan Members ({realMembers.length})</h1>
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 pb-24 bg-bg">
@@ -74,7 +80,7 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
             </div>
             
             <div className="flex flex-col gap-3">
-              {planMembers.map(member => (
+              {realMembers.map(member => (
                 <div 
                   key={member.id} 
                   onClick={() => navigate(`/member/${member.id}`, { state: { from: location.pathname + location.search, fromName: 'Plans' } })}
@@ -86,11 +92,11 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
                     </div>
                     <div className="flex flex-col">
                       <span className="text-white font-medium text-sm">{member.name}</span>
-                      <span className="text-text-secondary text-xs">#{member.id}</span>
+                    <span className="text-text-secondary text-xs">#{member.serial_no}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-text-secondary text-[10px]">Next due: {member.nextDueDate}</span>
+                    <span className="text-text-secondary text-[10px]">Next due: {new Date(member.nextDueDate).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
@@ -124,8 +130,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               <div className="flex-1 flex flex-col justify-center">
                 <div className="flex items-center justify-between mb-1">
                   <h2 className="font-bold text-white text-lg">{plan.name}</h2>
-                  <span className="bg-success/10 text-success text-xs font-medium px-2 py-1 rounded-md border border-success/20">
-                    {plan.status || 'Active'}
+                  <span className={`${plan.is_active ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'} text-xs font-medium px-2 py-1 rounded-md border`}>
+                    {plan.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div className="flex items-end gap-1">
@@ -150,7 +156,7 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               <Users className="w-5 h-5 text-text-secondary flex-shrink-0" />
               <div className="flex flex-col border-b border-border/50 pb-4 w-full">
                 <span className="text-sm text-text-secondary mb-1">Total Members</span>
-                <span className="text-white text-sm">{plan.members} Active members</span>
+                <span className="text-white text-sm">{plan.active_members_count || realMembers.length} Active members</span>
               </div>
             </div>
 
@@ -158,16 +164,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               <Calendar className="w-5 h-5 text-text-secondary flex-shrink-0" />
               <div className="flex flex-col border-b border-border/50 pb-4 w-full">
                 <span className="text-sm text-text-secondary mb-1">Created On</span>
-                <span className="text-white text-sm">1 Aug 2024</span>
-              </div>
-            </div>
-
-            <div className="flex gap-4">
-              <FileText className="w-5 h-5 text-text-secondary flex-shrink-0" />
-              <div className="flex flex-col w-full">
-                <span className="text-sm text-text-secondary mb-1">Description</span>
-                <span className="text-white text-sm leading-relaxed">
-                  Standard monthly membership plan with full gym access.
+                <span className="text-white text-sm">
+                  {new Date(plan.created_at || plan.createdAt || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </div>
             </div>
@@ -175,7 +173,7 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
 
           {/* Members List */}
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-white font-bold text-lg">Members using this plan (42)</h3>
+            <h3 className="text-white font-bold text-lg">Members using this plan ({plan.active_members_count || realMembers.length})</h3>
             <button 
               onClick={() => setMobileView('members')}
               className="text-primary text-sm font-medium flex items-center gap-1"
@@ -185,7 +183,7 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
           </div>
 
           <div className="flex flex-col gap-3 mb-8">
-            {planMembers.slice(0, 4).map(member => (
+            {realMembers.slice(0, 4).map(member => (
               <div 
                 key={member.id} 
                 onClick={() => navigate(`/member/${member.id}`, { state: { from: location.pathname + location.search, fromName: 'Plans' } })}
@@ -197,11 +195,11 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
                   </div>
                   <div className="flex flex-col">
                     <span className="text-white font-medium text-sm">{member.name}</span>
-                    <span className="text-text-secondary text-xs">#{member.id}</span>
+                    <span className="text-text-secondary text-xs">#{member.serial_no}</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className="text-text-secondary text-[10px]">Next due: {member.nextDueDate}</span>
+                  <span className="text-text-secondary text-[10px]">Next due: {new Date(member.nextDueDate).toLocaleDateString()}</span>
                 </div>
               </div>
             ))}
@@ -215,8 +213,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
             >
               <Edit2 className="w-4 h-4" /> Edit Plan
             </button>
-            <button onClick={() => onDeactivate(plan)} className="flex-1 py-3 px-4 bg-primary text-white rounded-xl font-medium flex items-center justify-center gap-2">
-              <Power className="w-4 h-4" /> Deactivate
+            <button onClick={() => onDeactivate(plan)} className={`flex-1 py-3 px-4 ${plan.is_active ? 'bg-primary' : 'bg-success'} text-white rounded-xl font-medium flex items-center justify-center gap-2`}>
+              <Power className="w-4 h-4" /> {plan.is_active ? 'Deactivate' : 'Activate'}
             </button>
           </div>
           <button onClick={() => onDelete(plan)} className="w-full py-3 px-4 border border-border bg-[#1e1e1e] text-error rounded-xl font-medium flex items-center justify-center gap-2">
@@ -255,8 +253,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               </div>
             </div>
             <div className="flex flex-col items-end gap-3">
-              <span className="bg-success/10 text-success text-xs font-medium px-2.5 py-1 rounded-md border border-success/20">
-                {plan.status || 'Active'}
+              <span className={`${plan.is_active ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'} text-xs font-medium px-2.5 py-1 rounded-md border`}>
+                {plan.is_active ? 'Active' : 'Inactive'}
               </span>
               <button 
                 onClick={() => onEdit(plan)}
@@ -281,7 +279,9 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               <Calendar className="w-5 h-5 text-text-secondary flex-shrink-0" />
               <div className="flex flex-col">
                 <span className="text-sm text-text-secondary mb-1">Created On</span>
-                <span className="text-white text-sm font-medium">1 Aug 2024</span>
+                <span className="text-white text-sm font-medium">
+                  {new Date(plan.created_at || plan.createdAt || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
               </div>
             </div>
 
@@ -289,24 +289,14 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
               <Users className="w-5 h-5 text-text-secondary flex-shrink-0" />
               <div className="flex flex-col">
                 <span className="text-sm text-text-secondary mb-1">Total Members</span>
-                <span className="text-white text-sm font-medium">{plan.members} Active members</span>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <FileText className="w-5 h-5 text-text-secondary flex-shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-sm text-text-secondary mb-1">Description</span>
-                <span className="text-white text-sm font-medium leading-relaxed">
-                  Standard monthly membership plan with full gym access.
-                </span>
+                <span className="text-white text-sm font-medium">{plan.active_members_count || realMembers.length} Active members</span>
               </div>
             </div>
           </div>
 
           {/* Members Table */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-white font-bold text-lg">Members using this plan (42)</h3>
+            <h3 className="text-white font-bold text-lg">Members using this plan ({plan.active_members_count || realMembers.length})</h3>
             <div className="flex items-center bg-[#18181b] border border-border rounded-lg px-3 py-2 w-64">
               <Search className="w-4 h-4 text-text-secondary mr-2" />
               <input 
@@ -330,13 +320,13 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
                 </tr>
               </thead>
               <tbody>
-                {planMembers.map((member) => (
+                {realMembers.map((member) => (
                   <tr 
                     key={member.id} 
                     onClick={() => navigate(`/member/${member.id}`, { state: { from: location.pathname + location.search, fromName: 'Plans' } })}
                     className="border-b border-border/50 hover:bg-white/5 transition-colors cursor-pointer"
                   >
-                    <td className="py-3 px-4 text-text-secondary text-sm">{member.id}</td>
+                    <td className="py-3 px-4 text-text-secondary text-sm">{member.serial_no}</td>
                     <td className="py-3 px-4 flex items-center gap-2">
                       <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs bg-[#1A0F00] border-2 border-[#B45309] shadow-sm">
                         {getInitials(member.name)}
@@ -344,8 +334,8 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
                       <span className="text-white text-sm font-medium">{member.name}</span>
                     </td>
                     <td className="py-3 px-4 text-text-secondary text-sm">{member.phone}</td>
-                    <td className="py-3 px-4 text-text-secondary text-sm">{member.joinDate}</td>
-                    <td className="py-3 px-4 text-text-secondary text-sm">{member.nextDueDate}</td>
+                    <td className="py-3 px-4 text-text-secondary text-sm">{new Date(member.joinDate).toLocaleDateString()}</td>
+                    <td className="py-3 px-4 text-text-secondary text-sm">{new Date(member.nextDueDate).toLocaleDateString()}</td>
                     <td className="py-3 px-4">
                       <span className="bg-success/10 text-success text-[10px] font-medium px-2 py-0.5 rounded-md border border-success/20">
                         {member.status}
@@ -396,9 +386,9 @@ const PlanDetailsModal = ({ isOpen, onClose, plan, onEdit, onDelete, onDeactivat
             </button>
             <button 
               onClick={() => onDeactivate(plan)}
-              className="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-primary/20 flex items-center gap-2"
+              className={`${plan.is_active ? 'bg-primary shadow-primary/20 hover:bg-primary/90' : 'bg-success shadow-success/20 hover:bg-success/90'} text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg flex items-center gap-2`}
             >
-              <Power className="w-5 h-5" /> Deactivate
+              <Power className="w-5 h-5" /> {plan.is_active ? 'Deactivate' : 'Activate'}
             </button>
           </div>
         </div>

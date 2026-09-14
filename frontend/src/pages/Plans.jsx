@@ -6,22 +6,31 @@ import AddPlanModal from '../components/AddPlanModal';
 import PlanDetailsModal from '../components/PlanDetailsModal';
 import DeletePlanModal from '../components/DeletePlanModal';
 import DeactivatePlanModal from '../components/DeactivatePlanModal';
+import usePlanStore from '../store/usePlanStore';
 
-const plansData = [
-  { id: 1, name: 'Monthly', category: 'General Fitness', duration: '1 Month', price: '₹1,000', priceSubtext: 'per month', members: 42, status: 'Active', icon: Calendar },
-  { id: 2, name: '3 Months', category: 'General Fitness', duration: '3 Months', price: '₹2,500', priceSubtext: 'per 3 months', members: 28, status: 'Active', icon: Calendar },
-  { id: 3, name: '6 Months', category: 'General Fitness', duration: '6 Months', price: '₹4,500', priceSubtext: 'per 6 months', members: 18, status: 'Active', icon: Calendar },
-  { id: 4, name: '1 Year', category: 'General Fitness', duration: '12 Months', price: '₹8,000', priceSubtext: 'per year', members: 12, status: 'Active', icon: Calendar },
-  { id: 5, name: 'Personal Training', category: 'One-on-One Training', duration: '1 Month', price: '₹3,500', priceSubtext: 'per month', members: 6, status: 'Active', icon: Dumbbell },
-];
+const formatDuration = (months) => {
+  if (months === 12) return '1 Year';
+  return `${months} Month${months > 1 ? 's' : ''}`;
+};
 
 const Plans = () => {
+  const { plans, fetchPlans, isLoading, error } = usePlanStore();
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState(null);
   const [isAddPlanModalOpen, setIsAddPlanModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const planIdParam = searchParams.get('plan');
-  const selectedPlan = planIdParam ? plansData.find(p => p.id === Number(planIdParam)) : null;
+  const selectedPlan = planIdParam ? plans.find(p => p.id === planIdParam || p.id === Number(planIdParam)) : null;
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      fetchPlans(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, fetchPlans]);
 
   const setSelectedPlan = (plan) => {
     if (plan) {
@@ -151,6 +160,8 @@ const Plans = () => {
           <Search className="w-5 h-5 text-text-secondary mr-2" />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search plans..." 
             className="bg-transparent border-none outline-none text-text-primary w-full placeholder-text-secondary"
           />
@@ -161,34 +172,18 @@ const Plans = () => {
       <div className="hidden md:grid grid-cols-4 gap-4 mb-6">
         <StatCard 
           title="Total Plans" 
-          value="5" 
+          value={plans.length.toString()} 
           icon={Layers} 
           colorClass="text-[#d97706]" 
           bgClass="bg-[#d97706]/10" 
         />
         <StatCard 
-          title="Total Enrolled" 
-          value="86" 
-          subtitle="Active members"
-          icon={Users} 
+          title="Active Plans" 
+          value={plans.filter(p => p.is_active).length.toString()} 
+          subtitle="Currently active"
+          icon={TrendingUp} 
           colorClass="text-success" 
           bgClass="bg-success/10" 
-        />
-        <StatCard 
-          title="Expected Revenue" 
-          value="₹1,42,000" 
-          subtitle="From active plans"
-          icon={IndianRupee} 
-          colorClass="text-primary" 
-          bgClass="bg-primary/10" 
-        />
-        <StatCard 
-          title="Most Popular" 
-          value="3 Months" 
-          subtitle="28 members"
-          icon={TrendingUp} 
-          colorClass="text-[#8b5cf6]" 
-          bgClass="bg-[#8b5cf6]/10" 
         />
       </div>
 
@@ -198,6 +193,8 @@ const Plans = () => {
           <Search className="w-4 h-4 text-text-secondary mr-2" />
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search plans..." 
             className="bg-transparent border-none outline-none text-text-primary w-full text-sm placeholder-text-secondary"
           />
@@ -230,8 +227,8 @@ const Plans = () => {
               </tr>
             </thead>
             <tbody>
-              {plansData.map((plan) => {
-                const Icon = plan.icon;
+              {plans.map((plan) => {
+                const Icon = Calendar; // Default icon
                 return (
                   <tr key={plan.id} className="border-b border-border/50 hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setSelectedPlan(plan)}>
                     <td className="p-4">
@@ -241,20 +238,20 @@ const Plans = () => {
                         </div>
                         <div>
                           <p className="font-bold text-white">{plan.name}</p>
-                          <p className="text-xs text-text-secondary">{plan.category}</p>
+                          <p className="text-xs text-text-secondary">Fitness Plan</p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4 text-sm">{plan.duration}</td>
+                    <td className="p-4 text-sm">{formatDuration(plan.duration_months)}</td>
                     <td className="p-4">
-                      <p className="font-bold text-primary">{plan.price}</p>
+                      <p className="font-bold text-primary">₹{plan.price}</p>
                     </td>
                     <td className="p-4">
-                      <span className="font-bold">{plan.members}</span>
+                      <span className="font-bold">{plan.active_members_count || 0}</span>
                     </td>
                     <td className="p-4">
-                      <span className="bg-success/10 text-success text-xs font-medium px-2.5 py-1 rounded-md border border-success/20">
-                        {plan.status}
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-md border ${plan.is_active ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'}`}>
+                        {plan.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -305,8 +302,8 @@ const Plans = () => {
 
       {/* Mobile Card View */}
       <div className="md:hidden flex flex-col gap-3">
-        {plansData.map((plan) => {
-          const Icon = plan.icon;
+        {plans.map((plan) => {
+          const Icon = Calendar;
           return (
             <div key={plan.id} className="bg-[#1c1c1e] border border-[#38383a] rounded-[20px] p-4 flex items-center justify-between cursor-pointer" onClick={() => setSelectedPlan(plan)}>
               
@@ -317,10 +314,10 @@ const Plans = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white font-bold text-[16px] leading-tight">{plan.name}</span>
-                  <span className="text-[#98989f] text-[13px] mt-1">{plan.duration}</span>
+                  <span className="text-[#98989f] text-[13px] mt-1">{formatDuration(plan.duration_months)}</span>
                   <div className="flex items-center gap-1 text-[#98989f] text-[13px] mt-0.5">
-                    <Users className="w-3.5 h-3.5" />
-                    <span>{plan.members} Active</span>
+                    <span className={`w-2 h-2 rounded-full ${plan.is_active ? 'bg-success' : 'bg-error'}`}></span>
+                    <span>{plan.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                 </div>
               </div>
@@ -328,9 +325,8 @@ const Plans = () => {
               {/* Right Side */}
               <div className="flex flex-col items-end text-right">
                 <div className="flex items-center text-primary font-bold text-[16px] leading-tight">
-                  {plan.price}
+                  ₹{plan.price}
                 </div>
-                <span className="text-[#98989f] text-[12px] mt-1">{plan.priceSubtext}</span>
               </div>
 
             </div>
