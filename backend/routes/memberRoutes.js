@@ -8,6 +8,8 @@ const {
   getMemberDetails,
   editMember,
   archiveMember,
+  recordPayment,
+  getMemberPayments,
 } = require('../controllers/memberController');
 
 const {
@@ -15,6 +17,7 @@ const {
   updateMemberValidator,
   idParamValidator,
   listMembersValidator,
+  recordPaymentValidator,
 } = require('../validators/memberValidator');
 
 const validate = require('../middleware/validate');
@@ -31,5 +34,9 @@ router
   .get(idParamValidator, validate, getMemberDetails)
   .put(updateMemberValidator, validate, editMember)
   .delete(idParamValidator, validate, archiveMember);
+
+router.route('/:id/payments')
+  .get(idParamValidator, validate, getMemberPayments)
+  .post(recordPaymentValidator, validate, recordPayment);
 
 module.exports = router;

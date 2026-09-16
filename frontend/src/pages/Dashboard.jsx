@@ -1,42 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../components/StatCard';
 import { UpcomingPaymentsTable, RecentPaymentsTable } from '../components/PaymentsTable';
 import Banner from '../components/Banner';
 import { Users, UserCheck, Clock, AlertCircle } from 'lucide-react';
+import api from '../api/axios';
 
-// Mock Data
-const upcomingPaymentsData = [
-  { id: '001', name: 'Rahul Kumar', plan: 'Monthly', dueDate: 'Tomorrow', status: 'Due Soon' },
-  { id: '002', name: 'Arun Nair', plan: '3 Months', dueDate: '12 Sep 2026', status: 'Active' },
-  { id: '003', name: 'Vishnu P', plan: 'Monthly', dueDate: '15 Sep 2026', status: 'Active' },
-  { id: '004', name: 'Akhil M', plan: '6 Months', dueDate: '16 Sep 2026', status: 'Active' },
-  { id: '005', name: 'Sreeraj', plan: '1 Year', dueDate: '18 Sep 2026', status: 'Active' },
-];
-
-const recentPaymentsData = [
-  { id: '006', name: 'Albin Jose', plan: 'Monthly', paidDate: '6 Sep 2026', amount: '₹1,000' },
-  { id: '007', name: 'Nikhil S', plan: '3 Months', paidDate: '6 Sep 2026', amount: '₹2,500' },
-  { id: '008', name: 'Rahul A', plan: 'Monthly', paidDate: '5 Sep 2026', amount: '₹1,000' },
-  { id: '009', name: 'Jithin K', plan: '6 Months', paidDate: '5 Sep 2026', amount: '₹4,500' },
-  { id: '010', name: 'Pranav M', plan: '1 Year', paidDate: '4 Sep 2026', amount: '₹8,000' },
-];
+// Mock Data replaced by dynamic API calls
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [upcomingPayments, setUpcomingPayments] = useState([]);
+  const [stats, setStats] = useState({
+    totalMembers: 0,
+    activeMembers: 0,
+    dueTomorrow: 0,
+    overdue: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/dashboard/stats');
+        setStats(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch stats', err);
+      }
+    };
+
+    const fetchRecentPayments = async () => {
+      try {
+        const res = await api.get('/payments/recent?limit=5');
+        const formatted = res.data.data.map(p => ({
+          id: p.member.id, // For initials
+          memberId: p.member.id, // Keep the real ID to link
+          name: p.member.name,
+          plan: p.plan.name,
+          paidDate: new Date(p.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          amount: `₹${p.amount}`
+        }));
+        setRecentPayments(formatted);
+      } catch (err) {
+        console.error('Failed to fetch recent payments', err);
+      }
+    };
+
+    const fetchUpcomingPayments = async () => {
+      try {
+        const res = await api.get('/payments/upcoming?limit=5');
+        setUpcomingPayments(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch upcoming payments', err);
+      }
+    };
+
+    fetchStats();
+    fetchRecentPayments();
+    fetchUpcomingPayments();
+  }, []);
+
+  const todayStr = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <>
       {/* Header section - Date only */}
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold">Monday, 7 September 2026</h1>
+        <h1 className="text-xl md:text-2xl font-bold">{todayStr}</h1>
       </div>
 
       {/* Stat Cards Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-16">
         <StatCard 
           title="Total Members" 
-          value="128" 
+          value={stats.totalMembers} 
           icon={Users} 
           colorClass="text-primary" 
           bgClass="bg-primary/10" 
@@ -44,7 +81,7 @@ const Dashboard = () => {
         />
         <StatCard 
           title="Active Members" 
-          value="115" 
+          value={stats.activeMembers} 
           icon={UserCheck} 
           colorClass="text-success" 
           bgClass="bg-success/10" 
@@ -52,7 +89,7 @@ const Dashboard = () => {
         />
         <StatCard 
           title="Due Tomorrow" 
-          value="8" 
+          value={stats.dueTomorrow} 
           icon={Clock} 
           colorClass="text-warning" 
           bgClass="bg-warning/10" 
@@ -60,7 +97,7 @@ const Dashboard = () => {
         />
         <StatCard 
           title="Overdue" 
-          value="5" 
+          value={stats.overdue} 
           icon={AlertCircle} 
           colorClass="text-danger" 
           bgClass="bg-danger/10" 
@@ -70,8 +107,8 @@ const Dashboard = () => {
 
       {/* Tables Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <UpcomingPaymentsTable data={upcomingPaymentsData} />
-        <RecentPaymentsTable data={recentPaymentsData} />
+        <UpcomingPaymentsTable data={upcomingPayments} />
+        <RecentPaymentsTable data={recentPayments} />
       </div>
 
       {/* Banner */}

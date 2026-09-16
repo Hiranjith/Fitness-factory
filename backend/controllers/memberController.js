@@ -191,11 +191,14 @@ exports.getMemberDetails = async (req, res, next) => {
     // Attach currentMembership
     const [memberWithMembership] = await attachCurrentMembership([member]);
 
+    const latestPayment = await Payment.findOne({ member_id: member.id }).sort({ payment_date: -1 }).lean();
+
     res.status(200).json({
       success: true,
       data: {
         member: memberWithMembership,
         memberships,
+        latestPayment,
       },
     });
   } catch (error) {
@@ -281,6 +284,98 @@ exports.archiveMember = async (req, res, next) => {
       success: true,
       message: 'Member and all associated data permanently deleted successfully',
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Record a payment for a member and extend membership
+// @route   POST /api/members/:id/payments
+// @access  Public/Private
+exports.recordPayment = async (req, res, next) => {
+  try {
+    const { amount, payment_method, payment_date } = req.body;
+    const memberId = req.params.id;
+
+    const member = await Member.findOne({ id: memberId, deleted_at: null });
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    const activeMembership = await Membership.findOne({ member_id: memberId, status: 'active' }).sort({ end_date: -1 });
+    if (!activeMembership) {
+      return res.status(400).json({ success: false, message: 'No active membership found for this member' });
+    }
+
+    const plan = await Plan.findOne({ id: activeMembership.plan_id });
+    if (!plan) {
+      return res.status(400).json({ success: false, message: 'Plan associated with membership not found' });
+    }
+
+    const payDate = payment_date ? new Date(payment_date) : new Date();
+
+    // Create a Payment record
+    const payment = new Payment({
+      member_id: memberId,
+      membership_id: activeMembership.id,
+      amount,
+      payment_date: payDate,
+      payment_method,
+      status: 'Paid',
+    });
+
+    await payment.save();
+
+    // Extend the membership based strictly on the old end date
+    const oldEndDate = new Date(activeMembership.end_date);
+    const newEndDate = new Date(oldEndDate);
+    newEndDate.setMonth(oldEndDate.getMonth() + plan.duration_months);
+
+    activeMembership.start_date = oldEndDate;
+    activeMembership.end_date = newEndDate;
+    await activeMembership.save();
+
+    // Re-fetch member details
+    const [memberWithMembership] = await attachCurrentMembership([member.toObject()]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment recorded successfully',
+      data: {
+        payment,
+        member: memberWithMembership,
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all payments for a member
+// @route   GET /api/members/:id/payments
+// @access  Public/Private
+exports.getMemberPayments = async (req, res, next) => {
+  try {
+    const memberId = req.params.id;
+
+    const member = await Member.findOne({ id: memberId, deleted_at: null });
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    const [memberWithMembership] = await attachCurrentMembership([member.toObject()]);
+
+    const payments = await Payment.find({ member_id: memberId }).sort({ payment_date: -1 }).lean();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        member: memberWithMembership,
+        payments,
+      }
+    });
+
   } catch (error) {
     next(error);
   }

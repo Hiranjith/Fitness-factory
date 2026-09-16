@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, MoreVertical, Download, RefreshCw, X, ChevronLeft, ChevronRight, Calendar, Eye, Edit, Trash2, UserPlus } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import AddMemberModal from '../components/AddMemberModal';
+import EditMemberModal from '../components/EditMemberModal';
 
 import useMemberStore from '../store/useMemberStore';
 import usePlanStore from '../store/usePlanStore';
@@ -44,6 +45,8 @@ const Members = () => {
   const [isMobileMoreMenuOpen, setIsMobileMoreMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [isEditMemberModalOpen, setIsEditMemberModalOpen] = useState(false);
+  const [memberToEdit, setMemberToEdit] = useState(null);
   const [exportOption, setExportOption] = useState('All Members');
   const [openDropdownId, setOpenDropdownId] = useState(null);
   
@@ -57,6 +60,29 @@ const Members = () => {
     fetchPlans();
   }, [fetchMembers, fetchPlans]);
 
+  const getDynamicStatus = (member) => {
+    if (member.status !== 'active') return member.status ? member.status.charAt(0).toUpperCase() + member.status.slice(1) : 'Inactive';
+    
+    if (!member.currentMembership?.endDate) return 'Active';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dueDate = new Date(member.currentMembership.endDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return 'Overdue';
+    } else if (diffDays <= 3) {
+      return 'Due Soon';
+    } else {
+      return 'Active';
+    }
+  };
+
   // Derive UI properties
   const uiMembers = members.map(m => {
     return {
@@ -67,7 +93,7 @@ const Members = () => {
       displayNextDueDate: m.currentMembership?.endDate 
         ? new Date(m.currentMembership.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
         : 'N/A',
-      displayStatus: m.status === 'active' ? 'Active' : m.status,
+      displayStatus: getDynamicStatus(m),
     }
   });
 
@@ -84,6 +110,25 @@ const Members = () => {
 
     if (filterPlan !== 'All Plans' && member.displayPlan !== filterPlan) {
       return false;
+    }
+    
+    if (filterDate !== 'All') {
+      if (!member.currentMembership?.endDate) return false;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const dueDate = new Date(member.currentMembership.endDate);
+      dueDate.setHours(0, 0, 0, 0);
+
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (filterDate === 'Next 7 Days') {
+        if (diffDays < 0 || diffDays > 7) return false;
+      } else if (filterDate === 'Next 30 Days') {
+        if (diffDays < 0 || diffDays > 30) return false;
+      }
     }
     
     return true;
@@ -114,7 +159,7 @@ const Members = () => {
 
   // Prevent background scroll when modals are open
   useEffect(() => {
-    if (isExportModalOpen || isFilterModalOpen || isMobileMoreMenuOpen || isAddMemberModalOpen) {
+    if (isExportModalOpen || isFilterModalOpen || isMobileMoreMenuOpen || isAddMemberModalOpen || isEditMemberModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -122,7 +167,15 @@ const Members = () => {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isExportModalOpen, isFilterModalOpen, isMobileMoreMenuOpen, isAddMemberModalOpen]);
+  }, [isExportModalOpen, isFilterModalOpen, isMobileMoreMenuOpen, isAddMemberModalOpen, isEditMemberModalOpen]);
+
+  const hasActiveFilters = filterPlan !== 'All Plans' || filterDate !== 'All';
+
+  const clearFilters = () => {
+    setFilterStatus('All');
+    setFilterPlan('All Plans');
+    setFilterDate('All');
+  };
 
   return (
     <div className="flex flex-col h-full relative">
@@ -200,48 +253,66 @@ const Members = () => {
 
       {/* Search and Filters - Mobile order vs Desktop order */}
       {/* Mobile search bar */}
-      <div className="md:hidden flex items-center bg-surface rounded-lg px-4 py-3 w-full border border-border mb-4">
-        <Search className="w-5 h-5 text-text-secondary mr-2" />
-        <input 
-          type="text" 
-          placeholder="Search members..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-transparent border-none outline-none text-text-primary w-full placeholder-text-secondary"
-        />
-        <button className="text-text-secondary ml-2 p-1" onClick={() => setIsFilterModalOpen(true)}>
-          <Filter className="w-5 h-5" />
-        </button>
+      <div className="md:hidden flex flex-col gap-2 mb-4">
+        <div className="flex items-center bg-surface rounded-lg px-4 py-3 w-full border border-border">
+          <Search className="w-5 h-5 text-text-secondary mr-2" />
+          <input 
+            type="text" 
+            placeholder="Search members..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent border-none outline-none text-text-primary w-full placeholder-text-secondary"
+          />
+          <button className={`ml-2 p-1 relative ${hasActiveFilters ? 'text-primary' : 'text-text-secondary'}`} onClick={() => setIsFilterModalOpen(true)}>
+            <Filter className="w-5 h-5" />
+            {hasActiveFilters && <div className="absolute top-0 right-0 w-2.5 h-2.5 bg-primary rounded-full border-2 border-surface"></div>}
+          </button>
+        </div>
+        {hasActiveFilters && (
+          <div className="flex justify-end">
+            <button 
+              onClick={clearFilters}
+              className="text-sm text-danger font-medium flex items-center gap-1 hover:bg-danger/10 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <X className="w-4 h-4" /> Clear Filters
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Desktop Search and Filters row */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
-          <button 
-            onClick={() => { setActiveTab('All'); navigate('/members?tab=All', { replace: true }); }}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'All' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
-          >
-            All ({counts['All']})
-          </button>
-          <button 
-            onClick={() => { setActiveTab('Active'); navigate('/members?tab=Active', { replace: true }); }}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Active' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
-          >
-            Active ({counts['Active']})
-          </button>
-          <button 
-            onClick={() => { setActiveTab('Due Soon'); navigate('/members?tab=Due Soon', { replace: true }); }}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Due Soon' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
-          >
-            Due Soon ({counts['Due Soon']})
-          </button>
-          <button 
-            onClick={() => { setActiveTab('Overdue'); navigate('/members?tab=Overdue', { replace: true }); }}
-            className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Overdue' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
-          >
-            Overdue ({counts['Overdue']})
-          </button>
-        </div>
+        {/* Tabs */}
+        {!hasActiveFilters && (
+          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+            <button 
+              onClick={() => { setActiveTab('All'); navigate('/members?tab=All', { replace: true }); }}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'All' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
+            >
+              All ({counts['All']})
+            </button>
+            <button 
+              onClick={() => { setActiveTab('Active'); navigate('/members?tab=Active', { replace: true }); }}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Active' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
+            >
+              Active ({counts['Active']})
+            </button>
+            <button 
+              onClick={() => { setActiveTab('Due Soon'); navigate('/members?tab=Due Soon', { replace: true }); }}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Due Soon' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
+            >
+              Due Soon ({counts['Due Soon']})
+            </button>
+            <button 
+              onClick={() => { setActiveTab('Overdue'); navigate('/members?tab=Overdue', { replace: true }); }}
+              className={`whitespace-nowrap px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeTab === 'Overdue' ? 'bg-primary text-white' : 'bg-surface text-text-secondary border border-border'}`}
+            >
+              Overdue ({counts['Overdue']})
+            </button>
+          </div>
+        )}
+
+        {hasActiveFilters && <div className="flex-1"></div>}
 
         {/* Desktop search bar */}
         <div className="hidden md:flex items-center gap-4">
@@ -255,10 +326,18 @@ const Members = () => {
               className="bg-transparent border-none outline-none text-text-primary text-sm w-full placeholder-text-secondary"
             />
           </div>
-          <div className="relative">
+          <div className="relative flex items-center gap-2">
+            {hasActiveFilters && (
+              <button 
+                onClick={clearFilters}
+                className="text-sm text-danger font-medium flex items-center gap-1 hover:bg-danger/10 px-3 py-1.5 rounded-md transition-colors"
+              >
+                <X className="w-4 h-4" /> Clear Filters
+              </button>
+            )}
             <button 
               onClick={() => setIsFilterModalOpen(!isFilterModalOpen)}
-              className="border border-border bg-surface hover:bg-surface/80 text-text-primary font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
+              className={`border border-border ${hasActiveFilters ? 'bg-primary/10 text-primary border-primary/20' : 'bg-surface text-text-primary'} hover:bg-surface/80 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors`}
             >
               <Filter className="w-4 h-4" /> Filter
             </button>
@@ -309,11 +388,7 @@ const Members = () => {
                    {/* Actions */}
                    <div className="flex gap-3">
                      <button 
-                       onClick={() => {
-                         setFilterStatus('All');
-                         setFilterPlan('All Plans');
-                         setFilterDate('All');
-                       }}
+                       onClick={clearFilters}
                        className="flex-1 py-2.5 px-4 border border-border rounded-xl text-text-primary font-medium hover:bg-white/5 transition-colors text-sm"
                      >
                        Clear Filters
@@ -348,10 +423,11 @@ const Members = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredMembers.map((member, index) => (
-              <tr 
-                key={member.id} 
-                className="border-b border-border hover:bg-white/5 transition-colors text-sm cursor-pointer"
+            {filteredMembers.length > 0 ? (
+              filteredMembers.map((member, index) => (
+                <tr 
+                  key={member.id} 
+                  className="border-b border-border hover:bg-white/5 transition-colors text-sm cursor-pointer"
                 onClick={() => navigate(`/member/${member.id}`)}
               >
                 <td className="py-4 px-6 text-text-secondary">{String(member.serial_no).padStart(3, '0')}</td>
@@ -388,7 +464,11 @@ const Members = () => {
                           <Eye className="w-4 h-4 mr-3" /> View
                         </button>
                         <button 
-                          onClick={() => setOpenDropdownId(null)} 
+                          onClick={() => {
+                            setOpenDropdownId(null);
+                            setMemberToEdit(member);
+                            setIsEditMemberModalOpen(true);
+                          }} 
                           className="flex items-center px-3 py-2.5 text-sm font-medium text-text-primary hover:bg-primary/10 hover:text-primary rounded-lg transition-colors text-left"
                         >
                           <Edit className="w-4 h-4 mr-3" /> Edit
@@ -405,13 +485,22 @@ const Members = () => {
                   )}
                 </td>
               </tr>
-            ))}
+            ))
+            ) : (
+              <tr>
+                <td colSpan="8" className="py-12 text-center text-text-secondary">
+                  No members found matching the selected filters.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
         
         {/* Pagination Desktop */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-          <span className="text-sm text-text-secondary">Showing 1 – {filteredMembers.length} of {filteredMembers.length} members</span>
+          <span className="text-sm text-text-secondary">
+            Showing {filteredMembers.length > 0 ? 1 : 0} – {filteredMembers.length} of {filteredMembers.length} members
+          </span>
           <div className="flex items-center gap-2">
             <button className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-surface text-text-secondary hover:text-text-primary">
               <ChevronLeft className="w-4 h-4" />
@@ -434,8 +523,9 @@ const Members = () => {
 
       {/* Mobile Cards List */}
       <div className="md:hidden flex flex-col gap-3">
-        {filteredMembers.map((member) => (
-          <div key={member.id} className="bg-surface border border-border rounded-xl p-4 flex items-center justify-between relative">
+        {filteredMembers.length > 0 ? (
+          filteredMembers.map((member) => (
+            <div key={member.id} className="bg-surface border border-border rounded-xl p-4 flex items-center justify-between relative">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full border-2 border-[#B45309] bg-[#1A0F00] shadow-sm flex items-center justify-center font-bold text-white text-xl tracking-wide">
                 {getInitials(member.name)}
@@ -461,11 +551,16 @@ const Members = () => {
               </div>
             </div>
             
-            <Link to={`/member/${member.id}`} className="absolute inset-0 z-10">
-              <span className="sr-only">View {member.name}</span>
-            </Link>
+              <Link to={`/member/${member.id}`} className="absolute inset-0 z-10">
+                <span className="sr-only">View {member.name}</span>
+              </Link>
+            </div>
+          ))
+        ) : (
+          <div className="bg-surface border border-border rounded-xl p-8 flex flex-col items-center justify-center text-center">
+            <p className="text-text-secondary">No members found matching the selected filters.</p>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Mobile More Options Dropdown/Modal */}
@@ -606,11 +701,7 @@ const Members = () => {
 
                <div className="flex gap-4">
                  <button 
-                   onClick={() => {
-                     setFilterStatus('All');
-                     setFilterPlan('All Plans');
-                     setFilterDate('All');
-                   }}
+                   onClick={clearFilters}
                    className="flex-1 py-3 px-4 border border-border rounded-xl text-text-primary font-medium hover:bg-white/5 transition-colors"
                  >
                    Clear Filters
@@ -631,6 +722,16 @@ const Members = () => {
       <AddMemberModal 
         isOpen={isAddMemberModalOpen} 
         onClose={() => setIsAddMemberModalOpen(false)} 
+      />
+
+      {/* Edit Member Modal */}
+      <EditMemberModal
+        isOpen={isEditMemberModalOpen}
+        onClose={() => {
+          setIsEditMemberModalOpen(false);
+          setMemberToEdit(null);
+        }}
+        member={memberToEdit}
       />
     </div>
   );

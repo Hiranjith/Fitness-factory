@@ -16,12 +16,12 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
 
   const [formData, setFormData] = useState({
     name: member?.name || '',
-    phone: member?.phone || '',
-    address: member?.location || '',
-    plan_id: member?.plan_id || '',
-    amount: member?.amount ? member.amount.replace('₹', '').replace(',', '') : '',
-    startDate: member?.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : '',
-    status: member?.status || 'Active',
+    phone: member?.mobile_number || member?.phone || '',
+    address: member?.address || member?.location || '',
+    plan_id: member?.currentMembership?.plan?._id || member?.currentMembership?.plan || member?.plan_id || '',
+    amount: member?.currentMembership?.amount ? String(member.currentMembership.amount) : (member?.amount ? member.amount.replace('₹', '').replace(',', '') : ''),
+    startDate: member?.currentMembership?.startDate ? new Date(member.currentMembership.startDate).toISOString().split('T')[0] : (member?.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : ''),
+    status: member?.status ? member.status.charAt(0).toUpperCase() + member.status.slice(1) : 'Active',
   });
 
   const handleChange = (e) => {
@@ -71,12 +71,12 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
     if (isOpen && member) {
       setFormData({
         name: member.name || '',
-        phone: member.phone || '',
-        address: member.location || '',
-        plan_id: member.plan_id || '',
-        amount: member.amount ? member.amount.replace('₹', '').replace(',', '') : '',
-        startDate: member.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : '',
-        status: member.status || 'Active',
+        phone: member.mobile_number || member.phone || '',
+        address: member.address || member.location || '',
+        plan_id: member.currentMembership?.plan?._id || member.currentMembership?.plan || member.plan_id || '',
+        amount: member.currentMembership?.amount ? String(member.currentMembership.amount) : (member.amount ? member.amount.replace('₹', '').replace(',', '') : ''),
+        startDate: member.currentMembership?.startDate ? new Date(member.currentMembership.startDate).toISOString().split('T')[0] : (member.rawStartDate ? new Date(member.rawStartDate).toISOString().split('T')[0] : ''),
+        status: member.status ? member.status.charAt(0).toUpperCase() + member.status.slice(1) : 'Active',
       });
       setError('');
     }
@@ -108,36 +108,7 @@ const EditMemberModal = ({ isOpen, onClose, member }) => {
         </div>
 
         {/* Content (Scrollable) */}
-        <div className="overflow-y-auto p-4 md:p-6 flex flex-col gap-6 md:gap-8">
-          
-          {/* Member Summary Card (Desktop Only) */}
-          <div className="hidden md:flex bg-surface border border-border rounded-2xl p-5 items-center justify-between gap-4">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-2xl text-bg font-bold flex-shrink-0">
-                {member?.name?.charAt(0) || 'M'}
-              </div>
-              <div className="flex flex-col gap-1">
-                <h3 className="text-xl font-bold text-text-primary">{member?.name}</h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-text-secondary">#{member?.id}</span>
-                  <div className="bg-success/10 text-success px-2 py-0.5 rounded text-[11px] font-bold flex items-center">
-                    {member?.status}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Phone className="w-4 h-4 text-primary" />
-                <span>{member?.phone}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span>{formData.address || member?.location}</span>
-              </div>
-            </div>
-          </div>
+        <div className="overflow-y-auto flex-1 min-h-0 p-4 md:p-6 flex flex-col gap-6 md:gap-8">
 
           {error && (
             <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-xl flex items-center gap-3 text-sm">

@@ -54,34 +54,37 @@ export const UpcomingPaymentsTable = ({ data }) => {
       </div>
       
       <div className="flex flex-col gap-3">
-        {data.map((row, idx) => (
-          <Link to={`/member/${row.id}`} key={row.id} className={`block ${idx >= 3 ? 'hidden md:block' : ''}`}>
-            <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border hover:border-text-secondary/30 transition-colors cursor-pointer">
-              <div className="flex items-center gap-4 md:gap-5">
-                <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-border bg-bg flex items-center justify-center text-sm font-medium text-text-primary flex-shrink-0">
-                  {row.id}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <p className="font-bold text-base md:text-lg text-text-primary">{row.name}</p>
-                  <div className="flex items-center gap-2 text-text-secondary">
-                    <CreditCard className="w-4 h-4" />
-                    <span className="text-sm">{row.plan}</span>
+        {data.map((row, idx) => {
+          const initials = row.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+          return (
+            <Link to={`/member/${row.id}`} key={row.id} className={`block ${idx >= 3 ? 'hidden md:block' : ''}`}>
+              <div className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border hover:border-text-secondary/30 transition-colors cursor-pointer">
+                <div className="flex items-center gap-4 md:gap-5">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full border border-primary bg-transparent flex items-center justify-center text-lg font-bold text-white flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <p className="font-bold text-base md:text-lg text-text-primary">{row.name}</p>
+                    <div className="flex items-center gap-2 text-text-secondary">
+                      <CreditCard className="w-4 h-4" />
+                      <span className="text-sm">{row.plan}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-3 md:gap-6">
-                <div className="flex flex-col items-end gap-2">
-                  <span className={`${row.dueDate === 'Tomorrow' ? 'text-primary font-bold tracking-wide' : 'text-text-secondary font-medium'} text-xs md:text-sm`}>
-                    {row.dueDate}
-                  </span>
-                  <StatusBadge status={row.status} />
+                
+                <div className="flex items-center gap-3 md:gap-6">
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`${row.dueDate === 'Tomorrow' || row.dueDate === 'Today' ? 'text-primary font-bold tracking-wide' : 'text-text-secondary font-medium'} text-xs md:text-sm`}>
+                      {row.dueDate}
+                    </span>
+                    <StatusBadge status={row.status} />
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-text-secondary hidden sm:block" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-text-secondary hidden sm:block" />
               </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
       <Link to="/upcoming-payments" className="self-start mt-3">
         <button className="text-primary hover:text-primary/80 text-sm font-bold transition-colors">

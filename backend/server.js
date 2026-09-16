@@ -5,6 +5,8 @@ require('dotenv').config();
 const errorHandler = require('./middleware/errorHandler');
 const memberRoutes = require('./routes/memberRoutes');
 const planRoutes = require('./routes/planRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -23,6 +25,8 @@ mongoose.connect(MONGODB_URI)
 // Routes
 app.use('/api/members', memberRoutes);
 app.use('/api/plans', planRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
   res.send('Fitness Factory Backend API is running.');

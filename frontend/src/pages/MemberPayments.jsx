@@ -1,37 +1,66 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ChevronRight, Calendar, IndianRupee, CheckCircle2, 
-  MoreVertical, Eye, FileText, Phone, MapPin, PenSquare
+  MoreVertical, Eye, FileText, Phone, MapPin, PenSquare, Loader2
 } from 'lucide-react';
+import api from '../api/axios';
 
 const MemberPayments = () => {
   const { id } = useParams();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Mock data for the specific member
-  const member = {
-    id: '001',
-    name: 'Rahul Kumar',
-    phone: '+91 98765 43210',
-    location: 'Kochi, Kerala',
-    plan: 'Monthly',
-    amount: '₹1,000',
-    startDate: '10 Aug 2026',
-    nextDueDate: '10 Sep 2026',
-    status: 'Active',
-    totalPaid: '₹5,000',
-    totalPayments: 5,
-    firstPayment: '10 Apr 2026',
-    lastPayment: '10 Aug 2026'
+  useEffect(() => {
+    const fetchPayments = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/members/${id}/payments`);
+        setData(response.data.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch payments');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayments();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex h-full items-center justify-center flex-col gap-4">
+        <p className="text-danger">{error || 'Member not found'}</p>
+        <Link to="/members" className="text-primary hover:underline">Go back to members</Link>
+      </div>
+    );
+  }
+
+  const { member, payments } = data;
+  const currentMembership = member.currentMembership || {};
+  const planName = currentMembership.planName || 'Unknown Plan';
+  
+  // Format dates
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const paymentHistory = [
-    { date: '10 Aug 2026', amount: '₹1,000', period: '10 Aug - 10 Sep 2026', status: 'Paid', method: 'Manual / Cash' },
-    { date: '10 Jul 2026', amount: '₹1,000', period: '10 Jul - 10 Aug 2026', status: 'Paid', method: 'Manual / Cash' },
-    { date: '10 Jun 2026', amount: '₹1,000', period: '10 Jun - 10 Jul 2026', status: 'Paid', method: 'Manual / Cash' },
-    { date: '10 May 2026', amount: '₹1,000', period: '10 May - 10 Jun 2026', status: 'Paid', method: 'UPI' },
-    { date: '10 Apr 2026', amount: '₹1,000', period: '10 Apr - 10 May 2026', status: 'Paid', method: 'Manual / Cash' },
-  ];
+  const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalPayments = payments.length;
+  // Payments are sorted by date descending, so last is oldest (first payment)
+  const firstPayment = payments.length > 0 ? formatDate(payments[payments.length - 1].payment_date) : 'N/A';
+  const lastPayment = payments.length > 0 ? formatDate(payments[0].payment_date) : 'N/A';
+
+  const memberStatus = member.status === 'active' ? 'Active' : 'Inactive';
 
   return (
     <div className="flex flex-col h-full relative">
@@ -51,7 +80,7 @@ const MemberPayments = () => {
               </div>
               <span className="text-text-secondary text-xs font-medium">Total Paid</span>
             </div>
-            <span className="text-success font-bold text-lg">{member.totalPaid}</span>
+            <span className="text-success font-bold text-lg">₹{totalPaid}</span>
           </div>
           
           <div className="bg-surface border border-border rounded-2xl p-4 flex flex-col gap-2">
@@ -61,35 +90,41 @@ const MemberPayments = () => {
               </div>
               <span className="text-text-secondary text-xs font-medium">Total Payments</span>
             </div>
-            <span className="text-text-primary font-bold text-lg">{member.totalPayments}</span>
+            <span className="text-text-primary font-bold text-lg">{totalPayments}</span>
           </div>
         </div>
 
         {/* Payment List */}
         <div className="flex flex-col gap-3 mt-6">
-          {paymentHistory.map((payment, idx) => (
-            <div key={idx} className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border">
-              <div className="flex items-start gap-4">
-                <div className="mt-1">
-                  <div className="w-8 h-8 rounded-lg bg-bg border border-border flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-4 h-4 text-text-secondary" />
+          {payments.length === 0 ? (
+            <div className="text-center text-text-secondary py-8 bg-surface border border-border rounded-2xl">
+              No payments found.
+            </div>
+          ) : (
+            payments.map((payment, idx) => (
+              <div key={payment._id || idx} className="bg-surface rounded-2xl p-4 flex items-center justify-between border border-border">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1">
+                    <div className="w-8 h-8 rounded-lg bg-bg border border-border flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-4 h-4 text-text-secondary" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <p className="font-medium text-text-primary text-sm">{formatDate(payment.payment_date)}</p>
+                    <p className="text-[11px] text-text-secondary font-medium">{planName}</p>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium text-text-primary text-sm">{payment.date}</p>
-                  <p className="text-[11px] text-text-secondary font-medium">Monthly Plan ({payment.date.split(' ')[1]})</p>
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className="font-bold text-text-primary text-sm">₹{payment.amount}</span>
+                    <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-success text-bg">
+                      {payment.status}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col items-end gap-1.5">
-                  <span className="font-bold text-text-primary text-sm">{payment.amount}</span>
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-success text-bg">
-                    {payment.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
       </div>
@@ -117,20 +152,20 @@ const MemberPayments = () => {
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-bold text-text-primary">{member.name}</h2>
               <div className="flex items-center gap-4 mb-2">
-                <span className="text-base text-text-secondary font-medium">#{member.id}</span>
-                <div className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold flex items-center">
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 fill-success text-bg" />
-                  {member.status}
+                <span className="text-base text-text-secondary font-medium">#{member.serial_no}</span>
+                <div className={`${memberStatus === 'Active' ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30'} border px-3 py-1 rounded-full text-xs font-bold flex items-center capitalize`}>
+                  <CheckCircle2 className={`w-3.5 h-3.5 mr-1.5 ${memberStatus === 'Active' ? 'fill-success text-bg' : 'fill-danger text-bg'}`} />
+                  {memberStatus}
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-2">
                 <div className="flex items-center gap-2.5 text-text-secondary text-sm">
                   <Phone className="w-4 h-4 text-primary" />
-                  <span>{member.phone}</span>
+                  <span>{member.mobile_number}</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-text-secondary text-sm">
                   <MapPin className="w-4 h-4 text-primary" />
-                  <span>{member.location}</span>
+                  <span>{member.address || 'No Address Provided'}</span>
                 </div>
               </div>
             </div>
@@ -155,7 +190,7 @@ const MemberPayments = () => {
                   </div>
                   Plan
                 </div>
-                <span className="text-text-primary font-bold text-base">{member.plan}</span>
+                <span className="text-text-primary font-bold text-base">{planName}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-primary font-medium text-sm mb-1">
@@ -164,7 +199,7 @@ const MemberPayments = () => {
                   </div>
                   Amount
                 </div>
-                <span className="text-text-primary font-bold text-base">{member.amount}</span>
+                <span className="text-text-primary font-bold text-base">₹{currentMembership.amount || 0}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-primary font-medium text-sm mb-1">
@@ -173,7 +208,7 @@ const MemberPayments = () => {
                   </div>
                   Start Date
                 </div>
-                <span className="text-text-primary font-bold text-base">{member.startDate}</span>
+                <span className="text-text-primary font-bold text-base">{formatDate(currentMembership.start_date)}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2 text-primary font-medium text-sm mb-1">
@@ -182,7 +217,7 @@ const MemberPayments = () => {
                   </div>
                   Next Due Date
                 </div>
-                <span className="text-text-primary font-bold text-base">{member.nextDueDate}</span>
+                <span className="text-text-primary font-bold text-base">{formatDate(currentMembership.end_date)}</span>
               </div>
             </div>
           </div>
@@ -212,27 +247,33 @@ const MemberPayments = () => {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {paymentHistory.map((payment, idx) => (
-                  <tr key={idx} className="border-b border-border last:border-0 hover:bg-bg/50 transition-colors">
-                    <td className="py-5 px-6 text-text-secondary">{idx + 1}</td>
-                    <td className="py-5 px-6 font-medium">{payment.date}</td>
-                    <td className="py-5 px-6 font-medium">{payment.amount}</td>
-                    <td className="py-5 px-6 text-text-secondary">{payment.period}</td>
-                    <td className="py-5 px-6">
-                      <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-success text-bg">
-                        {payment.status}
-                      </span>
-                    </td>
-                    <td className="py-5 px-6 text-text-secondary">{payment.method}</td>
-                    <td className="py-5 px-6">
-                      <div className="flex items-center justify-center">
-                         <button className="p-2 hover:bg-bg rounded-lg text-text-secondary transition-colors">
-                           <Eye className="w-5 h-5" />
-                         </button>
-                      </div>
-                    </td>
+                {payments.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-8 text-center text-text-secondary">No payments found.</td>
                   </tr>
-                ))}
+                ) : (
+                  payments.map((payment, idx) => (
+                    <tr key={payment._id || idx} className="border-b border-border last:border-0 hover:bg-bg/50 transition-colors">
+                      <td className="py-5 px-6 text-text-secondary">{idx + 1}</td>
+                      <td className="py-5 px-6 font-medium">{formatDate(payment.payment_date)}</td>
+                      <td className="py-5 px-6 font-medium">₹{payment.amount}</td>
+                      <td className="py-5 px-6 text-text-secondary">{planName}</td>
+                      <td className="py-5 px-6">
+                        <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-success text-bg">
+                          {payment.status}
+                        </span>
+                      </td>
+                      <td className="py-5 px-6 text-text-secondary">{payment.payment_method}</td>
+                      <td className="py-5 px-6">
+                        <div className="flex items-center justify-center">
+                           <button className="p-2 hover:bg-bg rounded-lg text-text-secondary transition-colors">
+                             <Eye className="w-5 h-5" />
+                           </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -246,7 +287,7 @@ const MemberPayments = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-text-secondary text-xs font-medium">Total Paid</span>
-                  <span className="text-text-primary font-bold text-xl">{member.totalPaid}</span>
+                  <span className="text-text-primary font-bold text-xl">₹{totalPaid}</span>
                 </div>
               </div>
             </div>
@@ -258,7 +299,7 @@ const MemberPayments = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-text-secondary text-xs font-medium">Total Payments</span>
-                  <span className="text-text-primary font-bold text-xl">{member.totalPayments}</span>
+                  <span className="text-text-primary font-bold text-xl">{totalPayments}</span>
                 </div>
               </div>
             </div>
@@ -270,7 +311,7 @@ const MemberPayments = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-text-secondary text-xs font-medium">First Payment</span>
-                  <span className="text-text-primary font-bold text-base">{member.firstPayment}</span>
+                  <span className="text-text-primary font-bold text-base">{firstPayment}</span>
                 </div>
               </div>
             </div>
@@ -282,7 +323,7 @@ const MemberPayments = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-text-secondary text-xs font-medium">Last Payment</span>
-                  <span className="text-text-primary font-bold text-base">{member.lastPayment}</span>
+                  <span className="text-text-primary font-bold text-base">{lastPayment}</span>
                 </div>
               </div>
             </div>

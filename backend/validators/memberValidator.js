@@ -62,3 +62,21 @@ exports.listMembersValidator = [
   query('search').optional().trim(),
   query('status').optional().trim(),
 ];
+
+exports.recordPaymentValidator = [
+  param('id').isUUID().withMessage('Invalid Member ID format'),
+  body('amount')
+    .notEmpty()
+    .withMessage('Payment amount is required')
+    .isNumeric()
+    .withMessage('Amount must be a number'),
+  body('payment_method')
+    .notEmpty()
+    .withMessage('Payment method is required')
+    .isString()
+    .withMessage('Payment method must be a string'),
+  body('payment_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format'),
+];

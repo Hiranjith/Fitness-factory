@@ -3,6 +3,7 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import SendReminderModal from '../components/SendReminderModal';
 import EditMemberModal from '../components/EditMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
+import RecordPaymentModal from '../components/RecordPaymentModal';
 import { 
   ChevronLeft, MoreVertical, Phone, MapPin, 
   Calendar, CreditCard, Clock, CheckCircle2, 
@@ -14,13 +15,13 @@ const MemberDetails = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isPaid, setIsPaid] = useState(false);
   
   const fromPath = location.state?.from || '/members';
   const fromName = location.state?.fromName || 'Members';
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const { currentMember, fetchMemberDetails, isLoading } = useMemberStore();
 
@@ -36,6 +37,47 @@ const MemberDetails = () => {
       </div>
     );
   }
+
+  const getDynamicStatus = (memberData) => {
+    if (memberData.status === 'inactive') return 'Inactive';
+    if (!memberData.currentMembership?.endDate) return 'Active';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(memberData.currentMembership.endDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'Overdue';
+    if (diffDays <= 7) return 'Due Soon';
+    return 'Active';
+  };
+
+  const getDueInfo = (memberData) => {
+    if (!memberData.currentMembership?.endDate) return { title: 'No Due Date', description: 'No active plan end date found.' };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(memberData.currentMembership.endDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      const days = Math.abs(diffDays);
+      return { title: `Overdue by ${days} day${days !== 1 ? 's' : ''}`, description: 'Payment is overdue. Please make the payment immediately.' };
+    } else if (diffDays === 0) {
+      return { title: 'Due Today', description: 'Please make the payment today to continue your membership.' };
+    } else if (diffDays === 1) {
+      return { title: 'Due Tomorrow', description: 'Please make the payment tomorrow to continue your membership.' };
+    } else if (diffDays <= 7) {
+      return { title: `Due in ${diffDays} Days`, description: 'Please make the payment before the due date to continue your membership.' };
+    } else {
+      return { title: `Next Payment in ${diffDays} Days`, description: 'Your membership is active and running.' };
+    }
+  };
+
+  const dueInfo = getDueInfo(currentMember);
 
   // Dynamic mapped data for the specific member
   const member = {
@@ -54,8 +96,12 @@ const MemberDetails = () => {
     nextDueDate: currentMember.currentMembership?.endDate 
       ? new Date(currentMember.currentMembership.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) 
       : 'N/A',
-    status: currentMember.status === 'active' ? 'Active' : (currentMember.status?.charAt(0).toUpperCase() + currentMember.status?.slice(1)),
-    paymentDue: 'Tomorrow' // static for now as requested
+    status: getDynamicStatus(currentMember),
+    paymentDueTitle: dueInfo.title,
+    paymentDueDescription: dueInfo.description,
+    latestPaymentDate: currentMember.latestPayment?.payment_date 
+      ? new Date(currentMember.latestPayment.payment_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null
   };
 
   const paymentHistory = [
@@ -93,8 +139,8 @@ const MemberDetails = () => {
                 <h2 className="text-2xl md:text-3xl font-bold text-text-primary">{member.name}</h2>
                 <div className="flex items-center gap-3 md:gap-4 mb-2">
                   <span className="text-sm md:text-base text-text-secondary font-medium">#{member.id}</span>
-                  <div className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold flex items-center">
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 fill-success text-bg" />
+                  <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center border capitalize ${member.status === 'Active' ? 'bg-success/10 text-success border-success/30' : member.status === 'Due Soon' ? 'bg-warning/10 text-warning border-warning/30' : member.status === 'Overdue' ? 'bg-danger/10 text-danger border-danger/30' : 'bg-gray-500/10 text-gray-400 border-gray-500/30'}`}>
+                    <CheckCircle2 className={`w-3.5 h-3.5 mr-1.5 text-bg ${member.status === 'Active' ? 'fill-success' : member.status === 'Due Soon' ? 'fill-warning' : member.status === 'Overdue' ? 'fill-danger' : 'fill-gray-500'}`} />
                     {member.status}
                   </div>
                 </div>
@@ -151,37 +197,29 @@ const MemberDetails = () => {
           </div>
 
           {/* Warning / Success Box */}
-          {isPaid ? (
-            <div className="bg-success/10 border border-success/20 rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-success flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-5 h-5 text-bg" />
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <h3 className="text-success font-bold text-base md:text-lg">Payment Received</h3>
-                  <p className="text-success/80 text-sm">Last payment on 6 Sep 2026</p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className={`border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 ${member.status === 'Overdue' ? 'bg-danger/10 border-danger/20' : member.status === 'Active' ? 'bg-success/10 border-success/20' : 'bg-primary/10 border-primary/20'}`}>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Clock className="w-4 h-4 text-bg" />
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${member.status === 'Overdue' ? 'bg-danger' : member.status === 'Active' ? 'bg-success' : 'bg-primary'}`}>
+                  {member.status === 'Active' ? <CheckCircle2 className="w-5 h-5 text-bg" /> : <Clock className="w-4 h-4 text-bg" />}
                 </div>
                 <div className="flex flex-col gap-1">
-                  <h3 className="text-primary font-bold text-base md:text-lg">Due {member.paymentDue}</h3>
-                  <p className="text-text-secondary text-sm md:text-base">Please make the payment to continue your membership.</p>
+                  <h3 className={`font-bold text-base md:text-lg ${member.status === 'Overdue' ? 'text-danger' : member.status === 'Active' ? 'text-success' : 'text-primary'}`}>
+                    {member.status === 'Active' ? 'Payment Received' : member.paymentDueTitle}
+                  </h3>
+                  <p className="text-text-secondary text-sm md:text-base">
+                    {member.status === 'Active' ? (member.latestPaymentDate ? `Last payment on ${member.latestPaymentDate}` : 'Membership is active and running.') : member.paymentDueDescription}
+                  </p>
                 </div>
               </div>
-              <button 
-                onClick={() => setIsPaid(true)}
-                className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white font-bold py-3.5 md:py-3 px-8 rounded-xl transition-colors text-base md:text-lg"
-              >
-                Mark as Paid
-              </button>
+              {member.status !== 'Active' && (
+                <button 
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white font-bold py-3.5 md:py-3 px-8 rounded-xl transition-colors text-base md:text-lg"
+                >
+                  Mark as Paid
+                </button>
+              )}
             </div>
-          )}
         </div>
 
           {/* Mobile Specific - Quick Actions */}
@@ -280,7 +318,7 @@ const MemberDetails = () => {
             <h3 className="font-bold text-xl mb-6">Member Actions</h3>
             <div className="bg-surface border border-border rounded-3xl overflow-hidden flex flex-col">
               
-              <button onClick={() => setIsPaid(true)} className="flex items-center justify-between p-5 border-b border-border hover:bg-bg/50 transition-colors group">
+              <button onClick={() => setIsPaymentModalOpen(true)} className="flex items-center justify-between p-5 border-b border-border hover:bg-bg/50 transition-colors group">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
                     <IndianRupee className="w-5 h-5" />
@@ -369,6 +407,12 @@ const MemberDetails = () => {
         onClose={() => setIsDeleteModalOpen(false)} 
         member={member} 
         onDeleteSuccess={() => navigate(fromPath)}
+      />
+
+      <RecordPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        member={{...member, currentMembership: currentMember.currentMembership}}
       />
 
     </div>

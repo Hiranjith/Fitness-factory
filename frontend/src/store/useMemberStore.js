@@ -27,7 +27,13 @@ const useMemberStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await api.get(`/members/${id}`);
-      set({ currentMember: response.data.data.member, isLoading: false });
+      set({ 
+        currentMember: {
+          ...response.data.data.member,
+          latestPayment: response.data.data.latestPayment
+        }, 
+        isLoading: false 
+      });
     } catch (error) {
       set({ error: error.response?.data?.message || 'Failed to fetch member details', isLoading: false });
     }
@@ -78,6 +84,22 @@ const useMemberStore = create((set, get) => ({
       }));
     } catch (error) {
       set({ error: error.response?.data?.message || 'Failed to delete member' });
+      throw error;
+    }
+  },
+
+  recordPayment: async (id, paymentData) => {
+    try {
+      const response = await api.post(`/members/${id}/payments`, paymentData);
+      set((state) => {
+        const isCurrent = state.currentMember?.id === id;
+        return {
+          currentMember: isCurrent ? { ...state.currentMember, ...response.data.data.member } : state.currentMember,
+          members: state.members.map(m => m.id === id ? { ...m, ...response.data.data.member } : m),
+        };
+      });
+      return response.data;
+    } catch (error) {
       throw error;
     }
   },
